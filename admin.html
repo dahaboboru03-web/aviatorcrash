@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aviator Admin</title>
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  body { overflow: auto; }
+  .admin-wrap { max-width: 900px; margin: 24px auto; padding: 0 16px; }
+  .admin-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow); }
+  .admin-card h1 { margin: 0 0 8px; font-size: 20px; }
+  .admin-card h2 { margin: 0 0 10px; font-size: 15px; }
+  .admin-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .admin-stat { flex: 1; min-width: 180px; background: #101827; border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+  .admin-stat .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+  .admin-stat .value { font-size: 22px; font-weight: 800; }
+  .admin-stat .value.crash { color: var(--accent-2); }
+  .admin-login { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .admin-login input { height: 36px; background: #0f1626; border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 0 10px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #1e2940; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  .hidden { display: none !important; }
+  .admin-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+  .admin-modal-overlay.show { display: flex; }
+  .admin-modal { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; width: min(960px, 96vw); max-height: 90vh; display: flex; flex-direction: column; box-shadow: var(--shadow); }
+  .admin-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .admin-modal-header h3 { margin: 0; font-size: 16px; }
+  .admin-modal-close { background: transparent; border: 1px solid var(--border); color: var(--text); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 18px; line-height: 1; }
+  .admin-modal-close:hover { border-color: #3b82f6; }
+  .admin-modal-body { padding: 14px 16px; overflow: auto; }
+          
+  #pnlModal { padding: 0; align-items: stretch; justify-content: stretch; }
+  #pnlModal .admin-modal { width: 100vw; max-width: none; height: 100dvh; max-height: none; border-radius: 0; border: none; display: flex; flex-direction: column; }
+  #pnlModal .admin-modal-header { background: #0f1626; }
+  #pnlModal .admin-modal-body { flex: 1; min-height: 0; height: auto !important; overflow: auto; }
+
+  .admin-pred-btn { background: #1a243a; border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 8px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+  .admin-pred-btn:hover { background: #223052; }
+  .admin-btn-sm { background: #1a243a; border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 6px; font-size: 11px; cursor: pointer; }
+  .admin-btn-sm:hover { background: #223052; }
+  .admin-player-checkbox { display: block; font-size: 13px; margin: 4px 0; cursor: pointer; }
+  .admin-player-checkbox input { margin-right: 6px; }
+  .admin-thread-item { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin: 4px 0; cursor: pointer; background: #101827; }
+  .admin-thread-item:hover { background: #1a243a; }
+  .admin-thread-item.selected { background: #223052; border-color: #3b82f6; }
+  .admin-msg { padding: 8px 10px; border-radius: 8px; margin: 4px 0; max-width: 80%; }
+  .admin-msg.mine { align-self: flex-end; background: rgba(59,130,246,0.15); border-color: #3b82f6; margin-left: auto; }
+  .admin-msg.theirs { align-self: flex-start; background: #1a243a; border-color: var(--border); margin-right: auto; }
+  .chat-av { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg,#334155,#1e293b); display: inline-flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .chat-av.vip { box-shadow: 0 0 0 2px #f6c343; }
+  .admin-toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1f2937; color: #fff; padding: 8px 14px; border-radius: 10px; border: 1px solid #334155; box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: .25s ease; z-index: 150; font-weight: 600; font-size: 13px; }
+  .admin-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div id="adminToastContainer"></div>
+
+<div class="admin-wrap">
+  <div class="admin-card" id="loginScreen">
+    <h1>Admin Access</h1>
+    <p class="muted">Enter admin key to view live crash points and round info.</p>
+    <div class="admin-login">
+      <input type="password" id="adminKeyInput" placeholder="Admin key">
+      <button class="btn-primary" id="adminLoginBtn">Login</button>
+      <span class="muted" id="adminLoginMsg"></span>
+    </div>
+  </div>
+
+  <div id="dash" class="hidden">
+    <div class="admin-card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <div><h1 style="margin-bottom:4px;">Round Monitor</h1><p class="muted" style="margin:0;">Sensitive: shows predetermined crash points (current/upcoming round). Do not expose to players.</p></div>
+      <button class="btn btn-secondary" id="adminLogoutBtn" style="background:#dc2626;border:none;color:#fff">Logout</button>
+    </div>
+
+    <div class="admin-card" style="display:flex;align-items:center;justify-content:flex-start;gap:10px;flex-wrap:wrap;position:relative;margin-top:12px">
+      <button class="btn btn-secondary" id="btnOpenWithdrawals" style="position:relative;background:#d97706;border:none;color:#fff">Withdrawal Requests<span class="admin-badge" id="wdBadge" style="display:none;position:absolute;top:-6px;right:-6px;width:12px;height:12px;background:#ef4444;border-radius:50%;border:2px solid #0b0f1a"></span></button>
+      <button class="btn btn-secondary" id="btnOpenDeposits" style="position:relative;background:#059669;border:none;color:#fff">Deposits<span class="admin-badge" id="depBadge" style="display:none;position:absolute;top:-6px;right:-6px;width:12px;height:12px;background:#ef4444;border-radius:50%;border:2px solid #0b0f1a"></span></button>
+      <button class="btn btn-secondary" id="btnOpenFailed" style="position:relative;background:#dc2626;border:none;color:#fff">Failed / Cancelled / Rejected</button>
+      <button class="btn btn-secondary" id="btnOpenMessage" style="position:relative;background:#2563eb;border:none;color:#fff">Message Player<span class="admin-badge" id="msgBadge" style="display:none;position:absolute;top:-6px;right:-6px;width:12px;height:12px;background:#ef4444;border-radius:50%;border:2px solid #0b0f1a"></span></button>
+      <button class="btn btn-secondary" id="btnOpenInbox" style="position:relative;background:#6d28d9;border:none;color:#fff">Inbox<span class="admin-badge" id="inboxBadge" style="display:none;position:absolute;top:-6px;right:-6px;width:12px;height:12px;background:#ef4444;border-radius:50%;border:2px solid #0b0f1a"></span></button>
+      <button class="btn btn-secondary" id="btnOpenAwardFreebet" style="position:relative;background:#f59e0b;border:none;color:#1f2937">Award Freebet</button>
+      <button class="btn btn-secondary" id="btnOpenFreebets" style="position:relative;background:#fbbf24;border:none;color:#3b2503;font-weight:700">Free Bets</button>
+      <button class="btn btn-secondary" id="btnOpenRains" style="position:relative;background:#38bdf8;border:none;color:#062a3b;font-weight:700">Rains</button>
+      <button class="btn btn-secondary" id="btnOpenUsers" style="position:relative;background:#64748b;border:none;color:#fff">Users</button>
+      <button class="btn btn-secondary" id="btnOpenHistory" style="position:relative;background:#4338ca;border:none;color:#fff">History</button>
+      <button class="btn btn-secondary" id="btnOpenManageFinances" style="position:relative;background:#7c3aed;border:none;color:#fff">Manage Finances</button>
+      <button class="btn btn-secondary" id="btnOpenPnl" style="position:relative;background:#0f766e;border:none;color:#fff;font-weight:700">System P&amp;L</button>
+      <button class="btn btn-secondary" id="btnOpenPublicChat" style="position:relative;background:#06b6d4;border:none;color:#06232b;font-weight:700">Public Chat<span class="admin-badge" id="publicChatBadge" style="display:none;position:absolute;top:-6px;right:-6px;width:12px;height:12px;background:#ef4444;border-radius:50%;border:2px solid #0b0f1a"></span></button>
+    </div>
+
+    <div class="admin-card"><h2>Current Round</h2>
+      <div class="admin-row">
+        <div class="admin-stat"><div class="label">Round ID</div><div class="value" id="statRoundId">-</div></div>
+        <div class="admin-stat"><div class="label">State</div><div class="value" id="statRoundState">-</div></div>
+        <div class="admin-stat"><div class="label">Current Multiplier</div><div class="value" id="statMultiplier">-</div></div>
+        <div class="admin-stat"><div class="label">Crash At (predetermined)</div><div class="value crash" id="statCrashAt">-</div></div>
+        <div class="admin-stat"><div class="label">Countdown / Timer</div><div class="value" id="statCountdown">-</div></div>
+        <div class="admin-stat"><div class="label">Next Round ID</div><div class="value" id="statNextRoundId">-</div></div>
+      </div>
+      <div style="margin-top:12px"><div class="label" style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Predetermined crashes (next 4 rounds)</div>
+        <div class="admin-row" id="adminPredeterminedCrashes"></div></div>
+    </div>
+
+    <div class="admin-card"><h2>Recent Completed Rounds</h2><table><thead><tr><th>Round</th><th>Crash Point</th><th>Completed</th></tr></thead><tbody id="adminCompletedRoundsBody"></tbody></table></div>
+
+    <div class="admin-card"><h2>Boosterpot Monitor</h2>
+      <p class="muted" style="margin:0 0 10px;">Predetermined Boosterpot targets (next 4), current progress, and the last won Boosterpot with winner details. Only players with a bet in the round where the target is hit can win.</p>
+      <div class="admin-row" style="margin-bottom:10px">
+        <div class="admin-stat"><div class="label">Current Amount</div><div class="value" id="statBpCurrent">-</div></div>
+        <div class="admin-stat"><div class="label">Current Target</div><div class="value crash" id="statBpTarget">-</div></div>
+        <div class="admin-stat"><div class="label">Status</div><div class="value" id="statBpStatus">-</div></div>
+        <div class="admin-stat"><div class="label">Event ID</div><div class="value" id="statBpEventId">-</div></div>
+      </div>
+      <div style="margin-bottom:12px"><div class="label" style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Predetermined Boosterpots (next 4)</div>
+        <div class="admin-row" id="adminPredeterminedBoosterpots"></div></div>
+      <div class="admin-stat" style="margin-bottom:10px"><div class="label">Last Won Boosterpot</div><div id="adminLastWonBp" style="margin-top:6px;font-size:13px;line-height:1.5">-</div></div>
+      <div style="margin-bottom:12px"><div class="label" style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Active Players Eligible to Win Boosterpot (<span id="adminBpEligibleCount">0</span>)</div>
+        <div style="overflow:auto;max-height:220px"><table><thead><tr><th>Player</th><th>Status</th><th>Last Bet Round</th><th>Bets (event)</th><th>Total Bet (event)</th><th>Last Bet</th></tr></thead><tbody id="adminBpEligibleBody"></tbody></table></div></div>
+      <div><div class="label" style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Recent Won Boosterpots (last 6)</div>
+        <div style="overflow:auto"><table><thead><tr><th>Winner</th><th>Amount</th><th>Status</th><th>Event</th><th>Time</th></tr></thead><tbody id="adminBpWinnersBody"></tbody></table></div></div>
+    </div>
+  </div>
+
+  <!-- Withdrawals Modal -->
+  <div id="withdrawalsModal" class="admin-modal-overlay hidden">
+    <div class="admin-modal">
+      <div class="admin-modal-header"><h3>Withdrawal Requests</h3><button class="admin-modal-close" id="wdCloseBtn">&times;</button></div>
+      <div class="admin-modal-body">
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+          <input type="text" id="wdSearch" placeholder="Search by ID or user..." style="height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:#0f1626;color:var(--text);flex:1;min-width:200px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)"><input type="checkbox" id="wdViewAll" style="width:16px;height:16px"> View all</label>
+        </div>
+        <div style="overflow:auto;max-height:400px"><table><thead><tr><th>ID</th><th>User</th><th>Amount</th><th>Phone</th><th>Status</th><th>Actions</th></tr></thead><tbody id="wdTableBody"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Deposits Modal -->
+  <div id="depositsModal" class="admin-modal-overlay hidden">
+    <div class="admin-modal">
+      <div class="admin-modal-header"><h3>Deposits</h3><button class="admin-modal-close" id="depCloseBtn">&times;</button></div>
+      <div class="admin-modal-body">
+        <input type="text" id="depSearch" placeholder="Search by ID or user..." style="height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:#0f1626;color:var(--text);width:100%;margin-bottom:10px">
+        <div style="overflow:auto;max-height:400px"><table><thead><tr><th>ID</th><th>User</th><th>Amount</th><th>Phone</th><th>Status</th><th>Actions</th></tr></thead><tbody id="depTableBody"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Failed/Cancelled/Rejected Modal -->
+  <div id="failedModal" class="admin-modal-overlay hidden">
+    <div class="admin-modal">
+      <div class="admin-modal-header"><h3>Failed / Cancelled / Rejected</h3><button class="admin-modal-close" id="failCloseBtn">&times;</button></div>
+      <div class="admin-modal-body">
+        <input type="text" id="failSearch" placeholder="Search by ID or user..." style="height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:#0f1626;color:var(--text);width:100%;margin-bottom:10px">
+        <div style="overflow:auto;max-height:400px"><table><thead><tr><th>ID</th><th>Type</th><th>User</th><th>Amount</th><th>Status</th><th>Reason</th></tr></thead><tbody id="failTableBody"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History Modal (Deposits + Withdrawals) -->
+  <div id="historyModal" class="admin-modal-overlay hidden">
+    <div class="admin-modal">
+      <div class="admin-modal-header"><h3>Transaction History</h3><button class="admin-modal-close" id="historyCloseBtn">&times;</button></div>
+      <div class="admin-modal-body">
+        <input type="text" id="historySearch" placeholder="Search by ID, user, or type..." style="height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:#0f1626;color:var(--text);width:100%;margin-bottom:10px">
+        <div style="overflow:auto;max-height:420px"><table><thead><tr><th>ID</th><th>Type</th><th>User</th><th>Amount</th><th>Status</th><th>Phone</th><th>Time</th></tr></thead><tbody id="historyTableBody"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manage Finances Modal -->
+  <div id="manageFinancesModal" class="admin-modal-overlay hidden">
+    <div class="admin-modal">
+      <div class="admin-modal-header"><h3>Manage Finances</h3><button class="admin-modal-close" id="manageFinancesCloseBtn">&times;</button></div>
+      <div class="admin-modal-body">
+        <div style="margin-bottom:12px"><label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:4px">Select Player</label><select id="mfUserSelect" style="width:100%;height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:#0f1626;color:var(--text)"></select></div>
+        <div id="mfUserFields">
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button class="btn btn-secondary" id="mfActionAdd" style="flex:1;background:#059669;border:none;color:#fff">Add Funds</button>
+          <button class="btn btn-secondary" id="mfActionDeduct" style="flex:1;background:#dc2626;border:none;color:#fff">Deduct Funds</button>
+        </div>
+        <div style="margin-bottom:12px"><label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:4px">Amount (KSh)</label><input type="number" id="mfAmount" min="1" step="any" placeholder="0.00" style="width:100%;height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:#0f1626;color:var(--text)"></div>
+        <div id="mfPreview" style="font-size:13px;color:var(--muted);margin-bottom:12px"></div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:8px">
+          <button class="btn btn-secondary" onclick="document.getElementById('manageFinancesModal').classList.remove('show');document.getElementById('manageFinancesModal').classList.add('hidden')">Cancel</button>
+          <button class="btn btn-primary" id="mfExecuteBtn" style="background:#7c3aed;border:none;color:#fff">Execute Adjustment</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Public Chat Modal -->
+  <div id="inboxCtxMenu" class="pc-ctx hidden" role="menu">
+    <button type="button" class="pc-ctx-item" data-action="reply">↩ <span>Reply</span></button>
+    <button type="button" class="pc-ctx-item" data-action="private">✉ <span>Open conversation</span></button>
+    <button type="button" class="pc-ctx-item" data-action="copy">⧉ <span>Copy</span></button>
+    <button type="button" class="pc-ctx-item" data-action="react">😊 <span>React 👍</span></button>
+    <button type="button" class="pc-ctx-item" data-action="forward">➦ <span>Forward</span></button>
+    <button type="button" class="pc-ctx-item" data-action="pin">📌 <span>Pin message</span></button>
+    <button type="button" class="pc-ctx-item danger" data-action="delete">🗑 <span>Delete message</span></button>
+  </div>
+
+  <div id="publicChatModal" class="admin-modal-overlay hidden">
+    <div class="admin-modal">
+      <div class="admin-modal-header">
+        <h3>Public Chat</h3>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button type="button" class="btn btn-secondary btn-xs" id="publicChatSavedBtn">Saved</button>
+          <button type="button" class="btn btn-secondary btn-xs" id="publicChatReportsBtn">Reports</button>
+          <button class="admin-modal-close" id="publicChatCloseBtn">&times;</button>
+        </div>
+      </div>
+      <div class="admin-modal-body">
+        <div style="font-size:12px;color:#94a3b8;margin-bottom:8px">You are chatting as <strong style="color:#ef4444">Admin</strong> — your messages appear in red to all players.</div>
+        <div id="publicChatPinned" class="pc-pinned hidden"></div>
+        <div id="publicChatSavedBar" class="pc-saved-bar hidden"><span>Showing saved messages</span><button type="button" id="publicChatSavedClear">Show all</button></div>
+        <div id="publicChatMessages" style="display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;overflow:auto;padding:10px;background:#0f1626;border:1px solid var(--border);border-radius:10px"></div>
+        <div id="publicChatReplyBar" class="pc-reply-bar hidden">
+          <div class="pc-reply-info"><div class="pc-reply-title">Replying to <span id="publicChatReplyName">Player</span></div><div class="pc-reply-text" id="publicChatReplyText"></div></div>
+          <button type="button" id="publicChatReplyCancel" aria-label="Cancel reply">✕</button>
+        </div>
+        <div id="publicChatTyping" class="chat-typing hidden"><span class="chat-typing-dots"><i></i><i></i><i></i></span><span id="publicChatTypingText"></span></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button type="button" id="adminRainBtn" title="Send Rain (free bet)" style="width:38px;height:38px;border-radius:8px;border:1px solid var(--border);background:#0f1626;color:#7dd3fc;font-size:18px;cursor:pointer;flex-shrink:0">🌧️</button>
+          <textarea id="publicChatInput" placeholder="Message all players..." rows="2" style="flex:1;min-height:36px;max-height:140px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:#0f1626;color:var(--text);resize:vertical;font-family:inherit;font-size:13px"></textarea>
+          <button class="btn btn-primary" id="publicChatSend" style="background:#06b6d4;border:none;color:#06232b;font-weight:700">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Message context menu -->
+  <div id="pcContextMenu" class="pc-ctx hidden" role="menu">
+    <div class="pc-ctx-reactions" id="pcCtxReactions"></div>
+    <button type="button" class="pc-ctx-item" data-action="reply">↩ <span>Reply</span></button>
+    <button type="button" class="pc-ctx-item" data-action="private">✉ <span>Message privately</span></button>
+    <button type="button" class="pc-ctx-item" data-action="copy">⧉ <span>Copy</span></button>
+    <button type="button" class="pc-ctx-item" data-action="react">😊 <span>React</span></button>
+    <button type="button" class="pc-ctx-item" data-action="forward">➦ <span>Forward</span></button>
+    <button type="button" class="pc-ctx-item" data-action="pin">📌 <span>Pin message</span></button>
+    <button type="button" class="pc-ctx-item" data-action="report">🚩 <span>Report message</span></button>
+    <button type="button" class="pc-ctx-item danger" data-action="delete">🗑 <span>Delete message</span></button>
+  </div>
+
+  <!-- Report message modal -->
+  <div id="chatReportModal" class="admin-modal-overlay hidden">
+    <div class="admin-modal" style="max-width:380px">
+      <div class="admin-modal-header"><h3>Report Message</h3><button class="admin-modal-close" id="chatReportCloseBtn">&times;</button></div>
+      <div class="admin-modal-body" style="display:grid;gap:10px">
+        <div id="chatReportPreview" class="pc-report-preview"></div>
+        <textarea id="chatReportReason" rows="3" placeholder="Why are you reporting this message? (optional)" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#0f1626;color:var(--text);font-family:inherit;font-size:13px;resize:vertical"></textarea>
+        <button class="btn btn-primary" id="chatReportSubmit">Submit Report</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete message confirm modal -->
+  <div id="chatDeleteModal" class="admin-modal-overlay hidden">
+    <div class="admin-modal" style="max-width:360px">
+      <div class="admin-modal-header"><h3>Delete Message</h3><button class="admin-modal-close" id="chatDeleteCloseBtn">&times;</button></div>
+      <div class="admin-modal-body" style="display:grid;gap:12px">
+        <div class="muted" style="font-size:13px">This message will be removed for everyone. This cannot be undone.</div>
+        <div class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-secondary" id="chatDeleteCancelBtn">Cancel</button>
+          <button class="btn btn-primary" id="chatDeleteConfirmBtn" style="background:#ef4444;border-color:#ef4444">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reports / audit modal -->
+  <div id="chatReportsModal" class="admin-modal-overlay hidden">
+    <div class="admin-modal" style="max-width:520px">
+      <div class="admin-modal-header"><h3>Reports &amp; Audit Log</h3><button class="admin-modal-close" id="chatReportsCloseBtn">&times;</button></div>
+      <div class="admin-modal-body">
+        <div class="pc-reports-tabs">
+          <button type="button" class="pc-tab active" data-tab="reports">Reports</button>
+          <button type="button" class="pc-tab" data-tab="audit">Audit log</button>
+        </div>
+        <div id="chatReportsList" class="pc-reports-list"></div>
+        <div id="chatAuditList" class="pc-reports-list hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Rain Modal -->
+  <div id="adminRainModal" class="admin-modal-overlay hidden">
+    <div class="admin-modal" style="max-width:360px">
+      <div class="admin-modal-header"><h3>🌧️ Send Rain</h3><button class="admin-modal-close" id="adminRainCloseBtn">&times;</button></div>
+      <div class="admin-modal-body" style="display:grid;gap:10px">
+        <div style="font-size:12px;color:#94a3b8">Rain a free bet for players to claim within 1 minute. Admin rains are free.</div>
+        <label style="display:grid;gap:4px"><span style="font-size:12px;color:#94a3b8">Amount per player (KSh 10–1000)</span>
+          <input type="number" id="adminRainAmount" min="10" max="1000" step="10" value="20" style="width:100%;height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:#0f1626;color:var(--text)">
+        </label>
+        <label style="display:grid;gap:4px"><span style="font-size:12px;color:#94a3b8">Number of players (1–10)</span>
+          <input type="number" id="adminRainPlayers" min="1" max="10" step="1" value="5" style="width:100%;height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:#0f1626;color:var(--text)">
+        </label>
+        <div id="adminRainSummary" style="font-size:13px;color:#94a3b8"></div>
+        <div style="display:flex;justify-content:flex-end;gap:8px">
+          <button class="btn btn-secondary" id="adminRainCancelBtn">Cancel</button>
+          <button class="btn btn-primary" id="adminRainSendBtn" style="background:#0ea5e9;border:none;color:#03212f;font-weight:700">Send Rain</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="messageModal" class="admin-modal-overlay">
+    <div class="admin-modal">
+      <div class="admin-modal-header"><h3>Broadcast Message</h3><button class="admin-modal-close" id="msgCancelBtn">&times;</button></div>
+      <div class="admin-modal-body">
+        <div style="margin-bottom:10px"><span style="font-size:12px;color:#94a3b8">Send to:</span> <span style="font-weight:600">All Players</span></div>
+        <textarea id="msgText" rows="3" placeholder="Type your message..." style="width:100%;height:80px;padding:8px;border:1px solid var(--border);border-radius:8px;background:#0f1626;color:var(--text);margin-bottom:10px"></textarea>
+        <div style="display:flex;justify-content:flex-end;gap:8px">
+          <button class="btn btn-secondary" onclick="document.getElementById('messageModal').classList.remove('show');document.getElementById('messageModal').classList.add('hidden')">Cancel</button>
+          <button class="btn btn-primary" id="msgSendBtn">Send to All</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="pnlModal" class="admin-modal-overlay">
+  <div class="admin-modal">
+    <div class="admin-modal-header"><h3>System P&amp;L</h3><button class="admin-modal-close" id="pnlCloseBtn">&times;</button></div>
+    <div class="admin-modal-body" id="pnlBody"></div>
+  </div>
+</div>
+
+<!-- Inbox Modal (split-view like user side) -->
+  <div id="inboxModal" class="admin-modal-overlay">
+    <div class="admin-modal">
+      <div class="admin-modal-header"><h3>Inbox</h3><button class="admin-modal-close" id="inboxCloseBtn">&times;</button></div>
+      <div class="admin-modal-body" style="display:flex;gap:10px;height:calc(90vh - 120px)">
+        <div style="flex:0 0 320px;display:flex;flex-direction:column;gap:8px;border-right:1px solid var(--border);padding-right:10px;background:#0f1626;min-height:0">
+          <input type="text" id="adminInboxSearch" placeholder="Search conversations..." style="height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:#101827;color:var(--text)">
+          <div id="adminInboxThreads" style="flex:1;overflow:auto"></div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;min-height:0;min-width:0">
+          <div id="adminInboxHeader" style="padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:8px;font-weight:600">Select a conversation</div>
+          <div id="adminInboxMessages" style="flex:1;overflow:auto;padding:8px;background:#0f1626;border:1px solid var(--border);border-radius:8px;display:flex;flex-direction:column;gap:8px"></div>
+          <div id="adminInboxComposer" style="display:flex;gap:8px;margin-top:8px">
+            <input type="text" id="adminInboxInput" placeholder="Type a reply..." style="flex:1;height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:#0f1626;color:var(--text)">
+            <button class="btn btn-primary" id="adminInboxSend">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Award Freebet Modal -->
+  <div id="awardFreebetModal" class="admin-modal-overlay">
+    <div class="admin-modal">
+      <div class="admin-modal-header"><h3>Award Freebet</h3><button class="admin-modal-close" id="awardFreebetCloseBtn">&times;</button></div>
+      <div class="admin-modal-body">
+        <p class="muted" style="margin-bottom:14px">Will award to <strong>all active players</strong>.</p>
+        <div style="display:flex;gap:12px;margin-bottom:14px">
+          <div style="flex:1">
+            <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px">Amount (KSh)</label>
+            <input type="number" id="awardFreebetAmount" placeholder="e.g. 100" style="height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:#0f1626;color:var(--text);width:100%">
+          </div>
+          <div style="flex:1">
+            <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px">Expires in (minutes)</label>
+            <input type="number" id="awardFreebetExpires" placeholder="30" value="30" min="1" style="height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:#0f1626;color:var(--text);width:100%">
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px">
+          <button class="btn btn-secondary" onclick="document.getElementById('awardFreebetModal').classList.remove('show');document.getElementById('awardFreebetModal').classList.add('hidden')">Cancel</button>
+          <button class="btn btn-primary" id="awardFreebetSendBtn">Award Freebet</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Awarded Freebets Modal -->
+  <div id="freebetsModal" class="admin-modal-overlay">
+    <div class="admin-modal" style="max-width:760px">
+      <div class="admin-modal-header"><h3>Free Bets</h3><button class="admin-modal-close" id="freebetsCloseBtn">&times;</button></div>
+      <div class="admin-modal-body">
+        <div id="freebetsSummary" class="muted" style="margin-bottom:10px;font-size:12px"></div>
+        <div id="freebetsList" style="overflow:auto;max-height:56vh"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Rains Tracker Modal -->
+  <div id="adminRainsTrackerModal" class="admin-modal-overlay">
+    <div class="admin-modal" style="max-width:760px">
+      <div class="admin-modal-header"><h3>Admin Rains</h3><button class="admin-modal-close" id="adminRainsTrackerCloseBtn">&times;</button></div>
+      <div class="admin-modal-body">
+        <div id="adminRainsSummary" style="margin-bottom:10px"></div>
+        <div id="adminRainsList" style="overflow:auto;max-height:56vh"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Users Modal -->
+  <div id="usersModal" class="admin-modal-overlay">
+    <div class="admin-modal">
+      <div class="admin-modal-header"><h3>Users</h3><button class="admin-modal-close" id="usersCloseBtn">&times;</button></div>
+      <div class="admin-modal-body">
+        <input type="text" id="usersSearch" placeholder="Search users..." style="height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:#0f1626;color:var(--text);width:100%;margin-bottom:10px">
+        <div style="overflow:auto;max-height:520px"><table><thead><tr><th>Player</th><th>User ID</th><th>Status</th><th>Balance</th></tr></thead><tbody id="usersTableBody"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- View User Detail Modal -->
+  <div id="viewUserModal" class="admin-modal-overlay">
+    <div class="admin-modal">
+      <div class="admin-modal-header"><h3 id="viewUserTitle">Player Profile</h3><button class="admin-modal-close" id="viewUserCloseBtn">&times;</button></div>
+      <div class="admin-modal-body" style="display:flex;gap:16px;height:calc(90vh - 120px)">
+        <!-- Left: Profile -->
+        <div style="flex:0 0 300px;border-right:1px solid var(--border);padding-right:16px;display:flex;flex-direction:column;gap:12px">
+          <div id="viewUserProfileCard" style="background:#0f1626;border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center">
+            <div id="viewUserAvatar" style="font-size:48px;margin-bottom:10px">👤</div>
+            <div id="viewUserName" style="font-size:20px;font-weight:800">—</div>
+            <div id="viewUserToken" style="font-size:11px;color:#94a3b8;font-family:monospace;word-break:break-all">—</div>
+            <div id="viewUserVipBadge" style="color:#f59e0b;font-weight:700;font-size:12px"></div>
+            <div style="display:flex;justify-content:center;gap:10px;margin-top:10px">
+              <span style="font-size:11px;color:#94a3b8">Status:</span> <span id="viewUserStatus" style="font-weight:600">—</span>
+            </div>
+            <div id="viewUserBalance" style="font-size:24px;font-weight:800;margin-top:6px">KSh 0.00</div>
+          </div>
+          <div id="viewUserQuickActions" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+        <!-- Right: Details tabs -->
+        <div style="flex:1;display:flex;flex-direction:column">
+          <div id="viewUserTabBar" style="display:flex;gap:8px;border-bottom:1px solid var(--border);margin-bottom:10px">
+            <button class="viewUserTab" data-tab="profile" style="flex:1;padding:8px;background:#1a243a;border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;font-size:12px">Profile</button>
+            <button class="viewUserTab" data-tab="bets" style="flex:1;padding:8px;background:#101827;border:1px solid var(--border);border-radius:6px;color:#94a3b8;cursor:pointer;font-size:12px">Bets</button>
+            <button class="viewUserTab" data-tab="deposits" style="flex:1;padding:8px;background:#101827;border:1px solid var(--border);border-radius:6px;color:#94a3b8;cursor:pointer;font-size:12px">Deposits</button>
+            <button class="viewUserTab" data-tab="withdrawals" style="flex:1;padding:8px;background:#101827;border:1px solid var(--border);border-radius:6px;color:#94a3b8;cursor:pointer;font-size:12px">Withdrawals</button>
+            <button class="viewUserTab" data-tab="messages" style="flex:1;padding:8px;background:#101827;border:1px solid var(--border);border-radius:6px;color:#94a3b8;cursor:pointer;font-size:12px">Messages</button>
+            <button class="viewUserTab" data-tab="freebets" style="flex:1;padding:8px;background:#101827;border:1px solid var(--border);border-radius:6px;color:#94a3b8;cursor:pointer;font-size:12px">Freebets</button>
+          </div>
+          <div id="viewUserTabContent" style="display:flex;flex-direction:column;flex:1;overflow:auto"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aviator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo-plane" aria-hidden="true">&#9992;</span>
+        <span class="logo-text">AVIATOR</span>
+      </div>
+      <nav class="top-actions">
+        <div class="balance-card">
+          <span class="balance-label">Balance</span>
+          <span class="balance-value" id="balance">KSh 10,000.00</span>
+        </div>
+        <button class="btn btn-deposit" id="depositBtn">Deposit</button>
+        <button class="btn btn-withdraw" id="withdrawBtn">Withdraw</button>
+        <button class="btn btn-history" id="txHistoryBtn">History</button>
+        <button class="btn btn-inbox" id="userInboxBtn" style="position:relative">Inbox<span id="userInboxBadge" style="display:none;position:absolute;top:-2px;right:-2px;width:10px;height:10px;background:#ef4444;border-radius:50%;border:2px solid rgba(10,14,24,.9)"></span></button>
+        <button class="btn btn-chat" id="chatBtn" style="position:relative">Chat<span class="chat-unread-badge" id="chatUnreadBadge" style="display:none;position:absolute;top:-2px;right:-2px;width:10px;height:10px;background:#ef4444;border-radius:50%;border:2px solid rgba(10,14,24,.9)"></span></button>
+        <button class="btn btn-rules" id="rulesBtn">Rules</button>
+        <div class="profile-menu">
+          <button class="profile-btn" id="profileBtn" aria-label="Profile">
+            <span class="avatar" id="avatar">P</span>
+            <span class="profile-name" id="profileName">Player</span>
+          </button>
+        </div>
+      </nav>
+    </header>
+
+    <main class="layout">
+      <section class="game-column">
+        <div class="game-shell">
+          <div class="boosterpot-hud boosterpot-hud-clickable" id="boosterpotHud" aria-label="Boosterpot progress" title="View recent Boosterpot winners" role="button" tabindex="0">
+            <div class="boosterpot-hud-top">
+              <div class="boosterpot-hud-title">💰 BOOSTERPOT</div>
+              <div class="boosterpot-hud-amount"><span id="boosterpotHudCurrent">KES 0.00</span></div>
+            </div>
+            <div class="boosterpot-hud-bar"><div class="boosterpot-hud-fill" id="boosterpotHudFill"></div></div>
+            <div class="boosterpot-hud-meta"><span id="boosterpotHudPercent">Growing</span><span id="boosterpotHudRate">1.01% of every bet contributes</span></div>
+          </div>
+          <div class="results-strip" id="resultsStrip" aria-label="Recent results"></div>
+          <div class="game-area" id="gameArea">
+            <canvas id="gameCanvas"></canvas>
+            <div class="game-overlay">
+              <div class="status-pill" id="roundStatus">Waiting for next round</div>
+              <div class="multiplier" id="multiplier">1.00x</div>
+              <div class="crash-label" id="crashLabel"></div>
+              <div class="countdown" id="countdown"></div>
+            </div>
+          </div>
+        </div>
+
+        <section class="betting-section">
+          <div class="bet-panel" data-panel="0">
+            <div class="panel-header">
+              <div class="mode-tabs">
+                <button class="tab active" data-mode="manual" data-panel="0">Manual</button>
+                <button class="tab" data-mode="auto" data-panel="0">Auto</button>
+              </div>
+              <div class="bet-status" id="status-0">Ready</div>
+            </div>
+            <div class="manual-controls" id="manual-0">
+              <div class="bet-grid">
+                <div class="amount-control">
+                  <button class="step" data-action="dec" data-panel="0">-</button>
+                  <input type="number" id="amount-0" class="amount-input" value="100" min="10" max="10000" step="10">
+                  <button class="step" data-action="inc" data-panel="0">+</button>
+                </div>
+                <div class="quick-amounts">
+                  <button class="chip" data-panel="0" data-amount="50">50</button>
+                  <button class="chip" data-panel="0" data-amount="100">100</button>
+                  <button class="chip" data-panel="0" data-amount="500">500</button>
+                  <button class="chip" data-panel="0" data-amount="1000">1000</button>
+                </div>
+                <div class="auto-cashout">
+                  <label for="auto-0">Auto Cash Out</label>
+                  <div class="auto-input-wrap">
+                    <input type="number" id="auto-0" min="1.1" max="100" step="0.01">
+                    <span>x</span>
+                  </div>
+                </div>
+
+                <button class="action-btn bet" id="action-0">BET <span class="action-sub" id="action-sub-0">KSh 100.00</span></button>
+              </div>
+            </div>
+            <div class="auto-controls hidden" id="autoctrl-0">
+              <div class="bet-grid">
+                <div class="amount-control">
+                  <button class="step auto-step" data-action="dec" data-panel="0">-</button>
+                  <input type="number" id="auto-amount-0" class="amount-input" value="100" min="10" max="10000" step="10">
+                  <button class="step auto-step" data-action="inc" data-panel="0">+</button>
+                </div>
+                <div class="quick-amounts">
+                  <button class="chip auto-chip" data-panel="0" data-amount="100">100</button>
+                  <button class="chip auto-chip" data-panel="0" data-amount="200">200</button>
+                  <button class="chip auto-chip" data-panel="0" data-amount="500">500</button>
+                  <button class="chip auto-chip" data-panel="0" data-amount="1000">1000</button>
+                </div>
+                <div class="auto-row">
+                  <div class="auto-field">
+                    <label for="auto-rounds-0">Number of rounds</label>
+                    <input type="number" id="auto-rounds-0" class="amount-input" value="10" min="1" max="1000" step="1">
+                  </div>
+                  <div class="auto-field">
+                    <label for="auto-target-0">Auto Cash Out</label>
+                    <div class="auto-input-wrap">
+                      <input type="number" id="auto-target-0" min="1.1" max="100" step="0.01">
+                      <span>x</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="auto-meta" id="auto-meta-0">AUTO STOPPED · Remaining: 0</div>
+                <button class="action-btn cashout hidden" id="auto-cashout-0">CASH OUT <span class="action-sub" id="auto-cashout-sub-0">KSh 0.00</span></button>
+                <button class="action-btn bet" id="auto-action-0">START AUTO <span class="action-sub" id="auto-sub-0">KSh 100.00</span></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="bet-panel" data-panel="1">
+            <div class="panel-header">
+              <div class="mode-tabs">
+                <button class="tab active" data-mode="manual" data-panel="1">Manual</button>
+                <button class="tab" data-mode="auto" data-panel="1">Auto</button>
+              </div>
+              <div class="bet-status" id="status-1">Ready</div>
+            </div>
+            <div class="manual-controls" id="manual-1">
+              <div class="bet-grid">
+                <div class="amount-control">
+                  <button class="step" data-action="dec" data-panel="1">-</button>
+                  <input type="number" id="amount-1" class="amount-input" value="100" min="10" max="10000" step="10">
+                  <button class="step" data-action="inc" data-panel="1">+</button>
+                </div>
+                <div class="quick-amounts">
+                  <button class="chip" data-panel="1" data-amount="50">50</button>
+                  <button class="chip" data-panel="1" data-amount="100">100</button>
+                  <button class="chip" data-panel="1" data-amount="500">500</button>
+                  <button class="chip" data-panel="1" data-amount="1000">1000</button>
+                </div>
+                <div class="auto-cashout">
+                  <label for="auto-1">Auto Cash Out</label>
+                  <div class="auto-input-wrap">
+                    <input type="number" id="auto-1" min="1.1" max="100" step="0.01">
+                    <span>x</span>
+                  </div>
+                </div>
+
+                <button class="action-btn bet" id="action-1">BET <span class="action-sub" id="action-sub-1">KSh 100.00</span></button>
+              </div>
+            </div>
+            <div class="auto-controls hidden" id="autoctrl-1">
+              <div class="bet-grid">
+                <div class="amount-control">
+                  <button class="step auto-step" data-action="dec" data-panel="1">-</button>
+                  <input type="number" id="auto-amount-1" class="amount-input" value="100" min="10" max="10000" step="10">
+                  <button class="step auto-step" data-action="inc" data-panel="1">+</button>
+                </div>
+                <div class="quick-amounts">
+                  <button class="chip auto-chip" data-panel="1" data-amount="100">100</button>
+                  <button class="chip auto-chip" data-panel="1" data-amount="200">200</button>
+                  <button class="chip auto-chip" data-panel="1" data-amount="500">500</button>
+                  <button class="chip auto-chip" data-panel="1" data-amount="1000">1000</button>
+                </div>
+                <div class="auto-row">
+                  <div class="auto-field">
+                    <label for="auto-rounds-1">Number of rounds</label>
+                    <input type="number" id="auto-rounds-1" class="amount-input" value="10" min="1" max="1000" step="1">
+                  </div>
+                  <div class="auto-field">
+                    <label for="auto-target-1">Auto Cash Out</label>
+                    <div class="auto-input-wrap">
+                      <input type="number" id="auto-target-1" min="1.1" max="100" step="0.01">
+                      <span>x</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="auto-meta" id="auto-meta-1">AUTO STOPPED · Remaining: 0</div>
+                <button class="action-btn cashout hidden" id="auto-cashout-1">CASH OUT <span class="action-sub" id="auto-cashout-sub-1">KSh 0.00</span></button>
+                <button class="action-btn bet" id="auto-action-1">START AUTO <span class="action-sub" id="auto-sub-1">KSh 100.00</span></button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <aside class="history-column">
+        <div class="history-card">
+          <div class="history-header">
+            <h2>Live Bets</h2>
+            <div class="history-tabs">
+              <button class="htab active" data-tab="all">All Bets</button>
+              <button class="htab" data-tab="previous">Previous</button>
+              <button class="htab" data-tab="mine">My Bets</button>
+              <button class="htab" data-tab="betwins">Bet Wins</button>
+            </div>
+          </div>
+          <div class="history-meta" id="historyMeta">Players: 0 · Total: KSh 0</div>
+          <div id="betWinsFilter" class="hidden" style="display:flex;align-items:center;gap:8px;padding:0 12px 8px 12px;font-size:12px;color:#94a3b8"><label for="betWinsRange">Time Frame</label><select id="betWinsRange" style="height:30px;background:#101827;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 8px"><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></div>
+          <div class="history-table-wrap" id="historyTableWrap">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>Bet</th>
+                  <th>Cash Out</th>
+                  <th>Win</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="historyBody"></tbody>
+            </table>
+          </div>
+          <div class="chat-wrap hidden" id="chatWrap" style="display:none">
+            <div class="chat-header-bar">
+              <button class="chat-close">Return to Game</button>
+              <span class="chat-title">Chat</span>
+            </div>
+            <div class="chat-messages"></div>
+            <form class="chat-input-row">
+              <input type="text" class="chat-input" maxlength="200" placeholder="Type a message..." autocomplete="off" />
+              <button type="submit" class="btn btn-primary chat-send">Send</button>
+            </form>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="modal-overlay hidden" id="chatModal" aria-hidden="true">
+    <div class="chat-modal-card" role="dialog" aria-modal="true" aria-label="Chat">
+      <div class="chat-header-bar">
+        <button class="chat-close" id="chatCloseBtn">Return to Game</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="chat-title">Chat</span>
+          <button type="button" class="chat-saved-btn" id="chatSavedBtn">Saved</button>
+        </div>
+      </div>
+      <div id="chatPinnedBar" class="chat-pinned-bar hidden"></div>
+      <div class="chat-messages" id="chatMessages"></div>
+      <div id="chatTyping" class="chat-typing hidden"><span class="chat-typing-dots"><i></i><i></i><i></i></span><span id="chatTypingText"></span></div>
+      <div id="chatReplyBar" class="chat-reply-bar hidden">
+        <div class="pc-reply-info"><div class="pc-reply-title">Replying to <span id="chatReplyName">Player</span></div><div class="pc-reply-text" id="chatReplyText"></div></div>
+        <button type="button" id="chatReplyCancel" aria-label="Cancel reply">✕</button>
+      </div>
+      <form class="chat-input-row" id="chatForm">
+        <button type="button" class="rain-btn" id="rainBtn" title="Send Rain (free bet)" aria-label="Send Rain">🌧️</button>
+        <input type="text" id="chatInput" class="chat-input" maxlength="200" placeholder="Type a message..." autocomplete="off" />
+        <button type="submit" class="btn btn-primary chat-send" id="chatSend">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="inboxCtxMenu" class="pc-ctx hidden" role="menu">
+    <button type="button" class="pc-ctx-item" data-action="reply">↩ <span>Reply</span></button>
+    <button type="button" class="pc-ctx-item" data-action="copy">⧉ <span>Copy</span></button>
+    <button type="button" class="pc-ctx-item" data-action="react">😊 <span>React 👍</span></button>
+    <button type="button" class="pc-ctx-item" data-action="forward">➦ <span>Forward</span></button>
+    <button type="button" class="pc-ctx-item" data-action="pin">📌 <span>Pin message</span></button>
+    <button type="button" class="pc-ctx-item danger" data-action="delete">🗑 <span>Delete message</span></button>
+  </div>
+
+  <div id="chatContextMenu" class="pc-ctx hidden" role="menu">
+    <div class="pc-ctx-reactions" id="chatCtxReactions"></div>
+    <button type="button" class="pc-ctx-item" data-action="reply">↩ <span>Reply</span></button>
+    <button type="button" class="pc-ctx-item" data-action="private">✉ <span>Message privately</span></button>
+    <button type="button" class="pc-ctx-item" data-action="copy">⧉ <span>Copy</span></button>
+    <button type="button" class="pc-ctx-item" data-action="react">😊 <span>React</span></button>
+    <button type="button" class="pc-ctx-item" data-action="forward">➦ <span>Forward</span></button>
+    <button type="button" class="pc-ctx-item" data-action="pin">📌 <span>Pin message</span></button>
+    <button type="button" class="pc-ctx-item" data-action="save">🔖 <span>Save message</span></button>
+    <button type="button" class="pc-ctx-item" data-action="report">🚩 <span>Report message</span></button>
+    <button type="button" class="pc-ctx-item danger" data-action="delete">🗑 <span>Delete message</span></button>
+  </div>
+
+  <div id="userReportModal" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="Report message" style="max-width:400px">
+      <div class="modal-header"><h3 style="margin:0">Report Message</h3><button class="modal-close" id="userReportCloseBtn" aria-label="Close">&times;</button></div>
+      <div class="modal-body" style="display:grid;gap:10px">
+        <div id="userReportPreview" class="pc-report-preview"></div>
+        <textarea id="userReportReason" rows="3" placeholder="Why are you reporting this message? (optional)" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#0f1626;color:var(--text);font-family:inherit;font-size:13px;resize:vertical"></textarea>
+        <button class="btn btn-primary" id="userReportSubmit">Submit Report</button>
+      </div>
+    </div>
+  </div>
+
+  
+  <div id="forwardModal" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="Forward message" style="max-width:420px">
+      <div class="modal-header"><h3>Forward message</h3><button class="modal-close" id="forwardClose" aria-label="Close">&times;</button></div>
+      <div id="forwardList" style="padding:12px;max-height:52vh;overflow:auto;display:flex;flex-direction:column;gap:6px"></div>
+      <div style="padding:10px 14px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px">
+        <button class="chat-close" id="forwardCancel" type="button">Cancel</button>
+        <button class="chat-close" id="forwardSend" type="button">Forward</button>
+      </div>
+    </div>
+  </div>
+<div id="chatDeleteModal" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="Delete message" style="max-width:360px">
+      <div class="modal-header"><h3 style="margin:0">Delete Message</h3><button class="modal-close" id="chatDeleteCloseBtn" aria-label="Close">&times;</button></div>
+      <div class="modal-body" style="display:grid;gap:12px">
+        <div class="muted" style="font-size:13px">This message will be removed for everyone. This cannot be undone.</div>
+        <div class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-secondary" id="chatDeleteCancelBtn">Cancel</button>
+          <button class="btn btn-primary" id="chatDeleteConfirmBtn" style="background:#ef4444;border-color:#ef4444">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="rainModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="Send Rain" style="max-width:360px">
+      <div class="modal-header"><h3 style="margin:0">🌧️ Send Rain</h3><button class="modal-close" id="rainCloseBtn" aria-label="Close">&times;</button></div>
+      <div class="modal-body" style="display:grid;gap:10px">
+        <div class="muted" style="font-size:12px">Rain a free bet for others to claim. They have 1 minute to grab it. You cannot claim your own rain.</div>
+        <label class="field" style="display:grid;gap:4px"><span style="font-size:12px;color:var(--muted)">Amount per player (KSh 10–1000)</span>
+          <input type="number" id="rainAmount" min="10" max="1000" step="10" value="20">
+        </label>
+        <label class="field" style="display:grid;gap:4px"><span style="font-size:12px;color:var(--muted)">Number of players (1–10)</span>
+          <input type="number" id="rainPlayers" min="1" max="10" step="1" value="5">
+        </label>
+        <div id="rainSummary" style="font-size:13px;color:var(--muted)"></div>
+        <div class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-secondary" id="rainCancelBtn">Cancel</button>
+          <button class="btn btn-primary" id="rainSendBtn">Send Rain</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="rulesModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="rulesTitle" style="max-width:560px">
+      <div class="modal-header" style="background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff">
+        <h3 id="rulesTitle" style="margin:0">📘 Game Rules</h3>
+        <button class="modal-close" id="rulesClose" aria-label="Close" style="background:rgba(0,0,0,.2)">&times;</button>
+      </div>
+      <div class="modal-body" style="padding:14px 16px;max-height:70vh;overflow:auto;display:flex;flex-direction:column;gap:16px">
+        <section>
+          <div class="rules-heading" style="color:#7dd3fc">How to Play &amp; Place Bets</div>
+          <ol style="margin:0;padding-left:20px;line-height:1.65;font-size:13px;display:flex;flex-direction:column;gap:6px">
+            <li>Each round has a short <strong>Betting</strong> phase, then the plane takes off and the multiplier grows.</li>
+            <li>Place a bet of <strong>KSh 10.00 – KSh 10,000.00</strong> per panel, with a maximum of <strong>one bet per panel per round</strong>. You can use <strong>two panels</strong> for two bets in the same round.</li>
+            <li>Set an optional <strong>auto cash-out</strong> and the bet cashes out automatically at that multiplier.</li>
+            <li>Cash out before the plane crashes. Your payout is <strong>stake × cash-out multiplier</strong> and is credited instantly.</li>
+            <li>Once the round starts flying, a placed bet is locked and cannot be cancelled.</li>
+            <li>During flight or after a crash you can <strong>queue</strong> a bet for the next round; the stake is taken when the queued bet activates, and if your balance is insufficient at that moment the queued bet is rejected.</li>
+            <li>Manual bets can be <strong>cancelled</strong> during the betting phase and the full stake is returned (auto bets cannot be cancelled while auto is running).</li>
+          </ol>
+        </section>
+        <section>
+          <div class="rules-heading" style="color:#a7f3d0">Profile &amp; VIP Status</div>
+          <ol style="margin:0;padding-left:20px;line-height:1.65;font-size:13px;display:flex;flex-direction:column;gap:6px">
+            <li>You can change your <strong>username</strong> and <strong>avatar</strong> anytime from your profile; they appear in chat, leaderboards and winner records.</li>
+            <li><strong>VIP status</strong> is earned by playing actively: place <strong>5 or more bets within any 10 minutes</strong>.</li>
+            <li>VIP players are highlighted with a gold ring and <strong>VIP</strong> badge in chat.</li>
+          </ol>
+        </section>
+        <section>
+          <div class="rules-heading" style="color:#fcd34d">Deposits</div>
+          <ol style="margin:0;padding-left:20px;line-height:1.65;font-size:13px;display:flex;flex-direction:column;gap:6px">
+            <li>Deposit by M-Pesa to <strong>Paybill 542542, Account 03708400476150</strong>.</li>
+            <li>After paying, <strong>paste the full M-Pesa confirmation message</strong> in the Deposit window and submit.</li>
+            <li>Deposits stay <strong>pending</strong> until verified and approved by admin, then your balance is credited.</li>
+            <li>Maximum deposit per request is <strong>KSh 150,000.00</strong> and the minimum is <strong>KSh 10.00</strong>.</li>
+          </ol>
+        </section>
+        <section>
+          <div class="rules-heading" style="color:#93c5fd">Withdrawals</div>
+          <ol style="margin:0;padding-left:20px;line-height:1.65;font-size:13px;display:flex;flex-direction:column;gap:6px">
+            <li>Minimum withdrawal is <strong>KSh 220.00</strong> and maximum is <strong>KSh 70,000.00</strong> per request.</li>
+            <li>The requested amount is <strong>reserved</strong> from your balance immediately so it cannot be spent.</li>
+            <li>A <strong>KSh 220.00 activation fee</strong> is paid to the same Paybill, then paste the M-Pesa confirmation message.</li>
+            <li>Admin verifies the payment and approves the payout; the reserved amount is then released to your M-Pesa.</li>
+          </ol>
+        </section>
+        <section>
+          <div class="rules-heading" style="color:#f9a8d4">Freebets</div>
+          <ol style="margin:0;padding-left:20px;line-height:1.65;font-size:13px;display:flex;flex-direction:column;gap:6px">
+            <li>Freebets are awarded by admin and appear as a popup with the amount.</li>
+            <li>Tap <strong>Claim</strong> to add the full amount to your balance.</li>
+            <li>Each freebet has an <strong>expiry time</strong> (typically 5 minutes from award); unclaimed freebets expire and cannot be recovered.</li>
+            <li><strong>Closing the freebet popup forfeits the freebet</strong> — it is marked as lost, cannot be claimed, and a notice is sent to your inbox. Just refreshing the page never cancels a freebet.</li>
+            <li>Admin also awards <strong>automatic freebets of KSh 50.00</strong> to <strong>all players at the same time</strong> at random times (about once every 10 minutes), claimable for <strong>60 seconds only</strong>.</li>
+          </ol>
+        </section>
+        <section>
+          <div class="rules-heading" style="color:#bae6fd">Rain</div>
+          <ol style="margin:0;padding-left:20px;line-height:1.65;font-size:13px;display:flex;flex-direction:column;gap:6px">
+            <li>Rain is money shared in the chat by players or admin; the first players to claim get an equal share.</li>
+            <li>Player rain is paid from the sender's balance; admin rain is separate and free to the admin.</li>
+            <li>Per player <strong>KSh 10.00 – KSh 1,000.00</strong>, up to <strong>10 players</strong>, total up to <strong>KSh 10,000.00</strong>.</li>
+            <li>Rain lasts <strong>60 seconds</strong>; claim it from the chat before it expires. Each player can claim a given rain only once.</li>
+            <li>You cannot claim your own rain.</li>
+          <li>Unclaimed player rain is forfeited to the system when it expires and is not returned to the sender.</li>
+            <li>Admin also sends <strong>automatic rains</strong> at random times (typically one every 5 minutes: KSh 20.00 for 5 players).</li>
+          </ol>
+        </section>
+        <section>
+          <div class="rules-heading" style="color:#7dd3fc">Boosterpot</div>
+          <ol style="margin:0;padding-left:20px;line-height:1.65;font-size:13px;display:flex;flex-direction:column;gap:6px">
+            <li><strong>Contribution:</strong> Every bet adds <strong>1.01%</strong> of the stake to the Boosterpot.</li>
+            <li><strong>Target:</strong> Each event has a preset target. When the pot reaches it, the event is triggered.</li>
+            <li><strong>How to qualify:</strong> You must have a real bet (KSh 10.00 – KSh 10,000.00) in the round when the pot reaches its target. Players who stopped betting before that round are not eligible, even if they contributed earlier in the event.</li>
+            <li><strong>Cancelled bets:</strong> A cancelled bet is removed from the pot and you stop counting as an active eligible player, unless you still have another active or queued bet.</li>
+            <li><strong>Winner:</strong> One eligible player is picked at random. Each player gets one entry, regardless of how many bets they placed.</li>
+            <li><strong>Prize:</strong> The winner receives the full pot, credited to their balance, and a new event starts automatically.</li>
+            <li><strong>No eligible player:</strong> If nobody qualifies, a random system player wins and the pot resets.</li>
+          </ol>
+        </section>
+        <section>
+          <div class="rules-heading" style="color:#e9d5ff">Admin Account Adjustments</div>
+          <ol style="margin:0;padding-left:20px;line-height:1.65;font-size:13px;display:flex;flex-direction:column;gap:6px">
+            <li>Admin may <strong>add or deduct funds</strong> for account management: correcting errors, bonuses, promotions, refunds, penalties, or other verified adjustments.</li>
+            <li>Every adjustment is recorded in your <strong>transaction history</strong> as <strong>Funds Added</strong> or <strong>Funds Deducted</strong>, with an admin reference.</li>
+            <li>Your balance updates immediately when an adjustment is applied.</li>
+          </ol>
+        </section>
+        <section>
+          <div class="rules-heading" style="color:#fca5a5">Chat Conduct</div>
+          <ol style="margin:0;padding-left:20px;line-height:1.65;font-size:13px;display:flex;flex-direction:column;gap:6px">
+            <li><strong>Respect everyone:</strong> No insults, harassment, hate speech, sexual content, or threats in chat or direct messages.</li>
+            <li><strong>Bad language is blocked:</strong> Messages containing prohibited language are not sent.</li>
+            <li><strong>Warnings and mute:</strong> Each blocked message earns a warning. On the 3rd warning you are muted from public chat for 3 minutes.</li>
+            <li><strong>Repeated abuse:</strong> Admin may mute, restrict, or suspend accounts that keep breaking the rules.</li>
+            <li><strong>Message limits:</strong> Public chat messages are limited to <strong>200 characters</strong> with a short cooldown between messages; direct messages are limited to <strong>500 characters</strong>.</li>
+            <li><strong>No impersonation:</strong> Do not pretend to be admin or staff. Only messages marked as from Admin are official.</li>
+            <li><strong>Public visibility:</strong> Chat messages are visible to all players; never share passwords, PINs, or payment details in chat.</li>
+          </ol>
+        </section>
+        <section>
+          <div class="rules-heading" style="color:#c4b5fd">Chat Features &amp; Message Tools</div>
+          <ol style="margin:0;padding-left:20px;line-height:1.65;font-size:13px;display:flex;flex-direction:column;gap:6px">
+            <li><strong>Message menu:</strong> Press and hold a message (or tap the ⋮ button) to reply, react, forward, save, pin, report or delete.</li>
+            <li><strong>Reactions:</strong> Choose from 12 emojis. Each person can leave one reaction per message; tap the same emoji again to remove it.</li>
+            <li><strong>Reply:</strong> Quotes the message you are answering so replies stay in context.</li>
+            <li><strong>Forward:</strong> Shares a message again with a <strong>Forwarded</strong> label showing the original author. A picker lets you choose the destination: one or more players&rsquo; inboxes, the public chat, or both.</li>
+            <li><strong>Save:</strong> Bookmarks messages privately. Saved messages are visible only to you (up to 100) and can be cleared anytime from the chat toolbar.</li>
+            <li><strong>Pin:</strong> You can pin or unpin <strong>your own messages</strong>; admin can pin any message. Up to 3 pinned messages appear at the top of chat.</li>
+            <li><strong>Delete:</strong> You can delete your own messages and admin can delete any message. Deleted messages show <strong>Message deleted by …</strong> and cannot be restored.</li>
+            <li><strong>Report:</strong> Sends the message to admin for review with an optional reason. False or abusive reports may be restricted.</li>
+            <li><strong>Private reply:</strong> Opens a direct inbox conversation with that player instead of posting publicly.</li>
+            <li><strong>Typing indicator:</strong> While you type, other players see that you are typing in chat.</li>
+            <li><strong>Swipe shortcuts (inbox and public chat):</strong> Swipe a message right to reply, or left to open the forward picker.</li>
+          </ol>
+        </section>
+        <section>
+          <div class="rules-heading" style="color:#fca5a5">Crash &amp; Auto Cash-Out</div>
+          <ol style="margin:0;padding-left:20px;line-height:1.65;font-size:13px;display:flex;flex-direction:column;gap:6px">
+            <li>The round crashes at a random multiplier. A <strong>1.00x</strong> crash is an instant crash: nobody can cash out and <strong>all bets placed in that round lose</strong>.</li>
+            <li><strong>Minimum auto cash-out is 1.10x.</strong> A value below 1.10x is corrected to 1.10x when you finish typing or place the bet.</li>
+            <li>Auto cash-out cannot be set above <strong>100.00x</strong>; the field is capped at 100.</li>
+            <li>If you leave the auto cash-out field <strong>blank</strong>, no automatic cash-out is set and you may cash out manually at any moment you choose.</li>
+            <li>Manual cash-out is allowed at any multiplier shown, including values below 1.10x.</li>
+            <li><strong>Maximum multiplier is 100.00x (the moon).</strong> If the plane reaches 100.00x, all active bets are automatically cashed out at 100.00x, whether or not an auto cash-out was set.</li>
+            <li><strong>Big cash-outs:</strong> Cash-outs at <strong>80.00x or higher</strong> are announced in chat as Admin cash-out cards. The round's three highest cash-outs are kept — a bigger cash-out replaces the lowest card of that round.</li>
+            <li><strong>Automatic pins:</strong> The latest <strong>2</strong> cash-out cards are pinned at the top of chat automatically; when a new card arrives the oldest one is replaced. Admin can pin 1 extra message on top of these.</li>
+          </ol>
+        </section>
+        <section>
+          <div class="rules-heading" style="color:#fde68a">Fair Play &amp; Security</div>
+          <ol style="margin:0;padding-left:20px;line-height:1.65;font-size:13px;display:flex;flex-direction:column;gap:6px">
+            <li><strong>One account per person:</strong> Multiple accounts, bonus abuse, or collusion to influence outcomes may lead to suspension and forfeiture of winnings.</li>
+            <li><strong>No cheating:</strong> Do not exploit bugs, glitches, or automation tools. Report any bug you find instead of abusing it.</li>
+            <li><strong>Account safety:</strong> You are responsible for activity on your account; never share your session or device with others.</li>
+            <li><strong>Respectful identity:</strong> Usernames and avatars must be respectful; offensive names may be reset by admin.</li>
+            <li><strong>Fair rounds:</strong> Round crash points are generated randomly server-side and cannot be influenced by players.</li>
+          </ol>
+        </section>
+        <section>
+          <div class="rules-heading" style="color:#bfdbfe">Payment Verification</div>
+          <ol style="margin:0;padding-left:20px;line-height:1.65;font-size:13px;display:flex;flex-direction:column;gap:6px">
+            <li><strong>Own number only:</strong> Use an M-Pesa number registered to you; payments from third parties may be rejected.</li>
+            <li><strong>One message, one use:</strong> An M-Pesa confirmation message can only be submitted once; duplicates are rejected.</li>
+            <li><strong>Accurate evidence:</strong> False, edited, or incomplete payment messages will be rejected and repeated abuse may restrict your payment options.</li>
+            <li><strong>Processing times:</strong> Deposits and withdrawals are processed after verification; incorrect details can delay approval.</li>
+            <li><strong>Reserved funds:</strong> A withdrawal amount stays reserved until it completes; if it fails, the reserved amount is returned to your balance.</li>
+          </ol>
+        </section>
+        <section>
+          <div class="rules-heading" style="color:#ddd6fe">Auto Bet</div>
+          <ol style="margin:0;padding-left:20px;line-height:1.65;font-size:13px;display:flex;flex-direction:column;gap:6px">
+            <li>Auto Bet places bets for you each round for a chosen number of rounds, optionally with automatic cash-out.</li>
+            <li>You can stop Auto Bet at any time; it also stops automatically if your balance is insufficient.</li>
+            <li>Auto bets cannot be manually cancelled while Auto Bet is running.</li>
+            <li>Queued bets placed during a round are activated automatically when the next betting phase opens.</li>
+          </ol>
+        </section>
+        <section>
+          <div class="rules-heading" style="color:#fbcfe8">Freebet &amp; Boosterpot Notes</div>
+          <ol style="margin:0;padding-left:20px;line-height:1.65;font-size:13px;display:flex;flex-direction:column;gap:6px">
+            <li>Freebets are personal, cannot be transferred, and can only be claimed once; expired or closed (lost) freebets cannot be restored.</li>
+            <li>Boosterpot contributions are final per bet; cancelling a bet removes its contribution from the pot.</li>
+            <li>A Boosterpot win is credited automatically; if you do not tap Collect, the win remains available for you in the popup.</li>
+          </ol>
+        </section>
+        <section>
+          <div class="rules-heading" style="color:#e5e7eb">General</div>
+          <ol style="margin:0;padding-left:20px;line-height:1.65;font-size:13px;display:flex;flex-direction:column;gap:6px">
+            <li>Admin decisions on disputes, adjustments and account restrictions are final.</li>
+            <li>Rules may be updated at any time; continued play means you accept the current rules.</li>
+            <li>Play responsibly — only bet what you can afford to lose.</li>
+          </ol>
+        </section>
+        <div style="border-top:1px solid var(--border);padding-top:12px;text-align:center;color:var(--muted);line-height:1.6">
+          <div style="font-weight:800;font-size:12px;letter-spacing:.8px;color:#cbd5e1;margin-bottom:6px">TERMS &amp; CONDITIONS</div>
+          <p style="margin:0 0 8px;font-size:11px">
+            By playing you agree to these rules. All bets are final once a round starts. Balances, bonuses, freebets, rains and Boosterpot winnings are subject to verification and may be corrected, withheld or reversed in the event of errors, fraud, abuse or rule violations. Deposits and withdrawals are processed only after payment verification. Admin decisions on disputes, adjustments and account restrictions are final.
+          </p>
+          <p style="margin:0 0 8px;font-size:11px">
+            The game is provided "as is". We reserve the right to update these terms at any time; continued play means you accept the latest version.
+          </p>
+          <div style="font-size:11px;color:#94a3b8">© 2026 Aviator. All rights reserved.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="userInboxModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="userInboxTitle" style="max-width:960px;width:98vw;height:82vh;max-height:82vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+      <div class="modal-header" style="padding:12px 14px;border-bottom:1px solid var(--border);flex:0 0 auto">
+        <h3 id="userInboxTitle" style="margin:0">Inbox</h3>
+        <button class="modal-close" id="userInboxClose" aria-label="Close">&times;</button>
+      </div>
+      <div style="display:flex;flex:1;min-height:0">
+        <div style="width:320px;max-width:42%;border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0;background:#0f1626">
+          <div style="padding:10px;border-bottom:1px solid var(--border)"><input type="text" id="userInboxSearch" placeholder="Search people" style="width:100%;height:34px;background:#101827;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 10px"></div>
+          <div id="userInboxThreads" style="flex:1;overflow:auto"></div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0;min-height:0">
+          <div id="userInboxHeader" style="padding:12px 14px;border-bottom:1px solid var(--border);font-weight:700;min-height:48px">Select a conversation</div>
+          <div id="userInboxMessages" style="flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:8px;background:#0b1220"></div>
+          <div id="userInboxComposer" style="padding:10px;border-top:1px solid var(--border);display:none;gap:8px;align-items:flex-end">
+            <textarea id="userInboxInput" rows="2" maxlength="500" placeholder="Type a message..." style="flex:1;resize:vertical;min-height:40px;max-height:120px;background:#0f1626;color:#e5e7eb;border:1px solid #2a3550;border-radius:8px;padding:8px 10px"></textarea>
+            <button class="btn-primary" id="userInboxSend" style="height:40px;padding:0 14px">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="betWinsModal" aria-hidden="true">
+    <div class="chat-modal-card" role="dialog" aria-modal="true" aria-labelledby="betWinsTitle">
+      <div class="chat-header-bar">
+        <div class="chat-title" id="betWinsTitle">Bet Wins</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div id="betWinsModeTabs" style="display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden"><button class="bw-mode active" data-mode="wins">Top Wins</button><button class="bw-mode" data-mode="odds">Top Odds</button></div>
+          <label for="betWinsRangeModal" style="font-size:12px;color:#94a3b8">Time Frame</label>
+          <select id="betWinsRangeModal" style="height:32px;background:#101827;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 8px">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+          <button class="chat-close" id="betWinsCloseBtn">Close</button>
+        </div>
+      </div>
+      <div id="betWinsBody" style="flex:1;overflow:auto;padding:14px;background:#0b1220"></div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="freebetModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="freebetTitle" style="max-width:460px">
+      <div class="modal-header" style="background:linear-gradient(135deg,#f59e0b,#f97316);color:#1f2937">
+        <h3 id="freebetTitle" style="margin:0">🎁 Free Bet!</h3>
+        <button class="modal-close" id="freebetClose" aria-label="Close All" title="Close All" style="background:rgba(0,0,0,.15)">×</button>
+      </div>
+      <div class="modal-body" style="text-align:center;padding:16px 12px">
+        <div id="freebetList" style="display:flex;flex-direction:column;gap:12px"></div>
+        <div id="freebetEmpty" style="display:none;margin-top:20px">
+          <p class="muted">No active free bets.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="profileModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle">
+      <div class="modal-header">
+        <h3 id="profileModalTitle">Profile</h3>
+        <button class="modal-close" id="profileClose" aria-label="Close profile" title="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="profile-preview">
+          <span class="avatar" id="profileAvatarPreview">P</span>
+          <div class="profile-preview-meta">
+            <div class="profile-preview-name"><span id="profileNamePreview">Player</span> <span id="profileVipBadge"></span></div>
+            <div class="profile-vip-status" id="profileVipStatus">Status: Regular player</div>
+          </div>
+        </div>
+        <div class="field">
+          <label for="usernameInput">Username</label>
+          <input type="text" id="usernameInput" maxlength="20" placeholder="Enter username">
+        </div>
+        <div class="field">
+          <label>Avatar</label>
+          <div class="avatar-grid" id="avatarGrid"></div>
+        </div>
+        <div class="hint" id="vipHint">Stay active (place bets/cash out) to earn VIP. VIP status is checked and resets every 10 minutes.</div>
+<div class="modal-actions">
+          <button class="btn btn-secondary" id="profileCancel">Cancel</button>
+          <button class="btn-primary" id="profileSave">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="depositModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="depositTitle">
+      <div class="modal-header">
+        <h3 id="depositTitle">Deposit (M-Pesa Paybill)</h3>
+        <button class="modal-close" id="depositClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="depositStep1">
+          <div class="field"><label for="depositPhone">Your M-Pesa phone number</label><input type="text" id="depositPhone" placeholder="e.g. 07XXXXXXXX or 2547XXXXXXXX"></div>
+          <div class="field"><label for="depositAmount">Deposit amount (KSh)</label><input type="number" id="depositAmount" min="10" step="1" value="100"></div>
+          <div class="quick-amounts pay-quick" id="depositQuick">
+            <button class="chip" data-amount="100">100</button>
+            <button class="chip" data-amount="200">200</button>
+            <button class="chip" data-amount="500">500</button>
+            <button class="chip" data-amount="1000">1,000</button>
+            <button class="chip" data-amount="2000">2,000</button>
+            <button class="chip" data-amount="5000">5,000</button>
+          </div>
+        </div>
+        <div id="depositStep2" style="display:none">
+          <div class="pay-info">
+            <div><strong>Paybill:</strong> <span id="depositPaybill">542542</span></div>
+            <div><strong>Account:</strong> <span id="depositAccount">03708400476150</span></div>
+            <div style="margin-top:6px">Send <strong>KSh <span id="depositPayAmount">0</span></strong> to the details above.</div>
+          </div>
+          <div class="field" style="margin-top:10px">
+            <label for="depositMessage">Paste M-Pesa confirmation message</label>
+            <textarea id="depositMessage" rows="5" placeholder="Paste the full M-Pesa SMS/message showing the transaction you paid" style="width:100%;box-sizing:border-box;resize:vertical;background:#0f1626;color:#e5e7eb;border:1px solid #2a3550;border-radius:8px;padding:8px"></textarea>
+          </div>
+          <div class="muted" style="font-size:12px;margin-top:4px">After paying, paste the transaction message and submit for admin approval.</div>
+        </div>
+        <div class="pay-status" id="depositStatusMsg"></div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="depositCancel">Cancel</button>
+          <button class="btn-primary" id="depositConfirm">Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="withdrawModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="withdrawTitle">
+      <div class="modal-header">
+        <h3 id="withdrawTitle">Withdraw (M-Pesa)</h3>
+        <button class="modal-close" id="withdrawClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="pay-info" id="withdrawInfo"></div>
+        <div id="withdrawStep1">
+          <div class="field"><label for="withdrawPhone">M-Pesa phone number</label><input type="text" id="withdrawPhone" placeholder="e.g. 07XXXXXXXX or 2547XXXXXXXX"></div>
+          <div class="field"><label for="withdrawAmount">Withdrawal amount (KSh)</label><input type="number" id="withdrawAmount" min="220" step="1" value="220"></div>
+          <div class="hint" id="withdrawLimits"></div>
+        </div>
+        <div id="withdrawStep2" style="display:none">
+          <div class="pay-info">
+            <div><strong>Activation fee:</strong> KSh <span id="withdrawFeeAmount">220</span></div>
+            <div><strong>Paybill:</strong> <span id="withdrawPaybill">542542</span></div>
+            <div><strong>Account:</strong> <span id="withdrawAccount">03708400476150</span></div>
+            <div style="margin-top:6px">Pay the activation fee to the details above to process withdrawal of <strong>KSh <span id="withdrawPayAmount">0</span></strong>.</div>
+          </div>
+          <div class="field" style="margin-top:10px">
+            <label for="withdrawMessage">Paste M-Pesa confirmation message (activation fee)</label>
+            <textarea id="withdrawMessage" rows="5" placeholder="Paste the full M-Pesa SMS/message showing you paid the KSh 220 activation fee" style="width:100%;box-sizing:border-box;resize:vertical;background:#0f1626;color:#e5e7eb;border:1px solid #2a3550;border-radius:8px;padding:8px"></textarea>
+          </div>
+          <div class="muted" style="font-size:12px;margin-top:4px">After paying, paste the activation fee transaction message and submit for admin approval. Withdrawal amount is reserved and will be released only if rejected.</div>
+        </div>
+        <div class="pay-status" id="withdrawStatusMsg"></div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="withdrawCancel">Cancel</button>
+          <button class="btn-primary" id="withdrawConfirm">Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="txModal" aria-hidden="true">
+    <div class="modal-card modal-wide" role="dialog" aria-modal="true" aria-labelledby="txTitle">
+      <div class="modal-header">
+        <h3 id="txTitle">Transaction History</h3>
+        <button class="modal-close" id="txClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="history-table-wrap pay-table-wrap">
+          <table class="history-table pay-table">
+            <thead><tr><th>Type</th><th>Amount</th><th>M-Pesa No.</th><th>Date/Time</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="txBody"></tbody>
+          </table>
+        </div>
+        <div id="txToggleWrap" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay boosterpot-overlay" id="boosterpotModal" aria-hidden="true">
+    <div class="modal-card boosterpot-card" role="dialog" aria-modal="true" aria-labelledby="boosterpotTitle">
+      <div class="modal-body boosterpot-body">
+        <div class="boosterpot-badge">BOOSTERPOT</div>
+        <h2 id="boosterpotTitle" class="boosterpot-title">YOU HAVE WON BOOSTERPOT!</h2>
+        <div class="boosterpot-amount" id="boosterpotAmount">KES 0.00</div>
+        <div class="boosterpot-sub" id="boosterpotSub">Congratulations! Collect your reward.</div>
+        <button class="btn-collect-win" id="boosterpotCollect">Collect Win</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="boosterpotHistoryModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="boosterpotHistoryTitle">
+      <div class="modal-header">
+        <h3 id="boosterpotHistoryTitle">Recent Boosterpot Winners</h3>
+        <button class="modal-close" id="boosterpotHistoryClose" aria-label="Close" title="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="boosterpotHistoryList" class="bp-history-list"></div>
+      </div>
+    </div>
+  </div>
+
+<div class="modal-overlay" id="adminMessageModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="adminMessageTitle" style="max-width:520px;border:2px solid #ef4444;box-shadow:0 0 60px rgba(239,68,68,0.35)">
+      <div class="modal-header" style="background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;margin:0">
+        <div style="display:flex;align-items:center;gap:8px"><span style="font-size:24px">👑</span><h3 id="adminMessageTitle" style="margin:0">Message from Admin</h3></div>
+        <button class="modal-close" id="adminMessageClose" aria-label="Close" style="background:rgba(255,255,255,.15)">×</button>
+      </div>
+      <div class="modal-body" style="text-align:center;padding:24px 20px">
+        <div id="adminMessageText" style="font-size:16px;line-height:1.7;color:var(--text);margin-bottom:20px;min-height:72px"></div>
+        <div class="muted" style="font-size:12px;margin-bottom:16px">Tap below to open your Inbox and reply to the admin.</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <button class="btn-primary" id="adminMessageGotoInbox" style="padding:12px 20px;font-size:15px">Open Inbox &amp; Reply</button>
+          <button class="btn-secondary" id="adminMessageOk" style="padding:12px 20px;font-size:15px;background:transparent;border:1px solid var(--border);color:var(--muted)">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
