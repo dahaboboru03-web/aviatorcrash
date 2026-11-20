@@ -13,7 +13,8 @@ function ensure() {
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       username TEXT,
-      phone_number TEXT,
+      phone_number TEXT UNIQUE,
+      password_hash TEXT,
       available_balance REAL NOT NULL DEFAULT 0,
       reserved_balance REAL NOT NULL DEFAULT 0,
       created_at INTEGER
@@ -93,6 +94,8 @@ function ensure() {
   `);
   try { db.exec('ALTER TABLE deposits ADD COLUMN payment_message TEXT'); } catch (_) {}
   try { db.exec('ALTER TABLE withdrawals ADD COLUMN payment_message TEXT'); } catch (_) {}
+  try { db.exec('ALTER TABLE users ADD COLUMN password_hash TEXT'); } catch (_) {}
+  try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone ON users(phone_number)'); } catch (_) {}
   return db;
 }
 
@@ -101,10 +104,34 @@ function getDb() { if (!db) db = ensure(); return db; }
 
 function upsertUser(p) {
   const d = getDb();
-  d.prepare(`INSERT INTO users (id,username,phone_number,available_balance,reserved_balance,created_at)
-    VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET username=excluded.username, phone_number=excluded.phone_number, available_balance=excluded.available_balance, reserved_balance=excluded.reserved_balance`)
-    .run(p.token, p.username||'Player', p.phoneNumber||null, Number(p.balance||0), Number(p.reservedBalance||0), p.createdAt||Date.now());
+  d.prepare(`INSERT INTO users (id,username,phone_number,password_hash,available_balance,reserved_balance,created_at)
+    VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET username=excluded.username, phone_number=excluded.phone_number, password_hash=COALESCE(excluded.password_hash, users.password_hash), available_balance=excluded.available_balance, reserved_balance=excluded.reserved_balance`)
+    .run(p.token, p.username||'Player', p.phoneNumber||null, p.passwordHash||null, Number(p.balance||0), Number(p.reservedBalance||0), p.createdAt||Date.now());
 }
+
+function createUser(id, username, phone, passwordHash) {
+  const d = getDb();
+  d.prepare(`INSERT INTO users (id,username,phone_number,password_hash,available_balance,reserved_balance,created_at)
+    VALUES (?,?,?,?,?,?,?)`)
+    .run(id, username||'Player', phone||null, passwordHash||null, 0, 0, Date.now());
+  return { id, username: username||'Player', phone_number: phone||null };
+}
+
+function findUserByPhone(phone) {
+  const d = getDb();
+  return d.prepare(`SELECT id, username, phone_number, password_hash, available_balance, reserved_balance, created_at FROM users WHERE phone_number = ?`).get(phone);
+}
+
+function getUserById(id) {
+  const d = getDb();
+  return d.prepare(`SELECT id, username, phone_number, password_hash, available_balance, reserved_balance, created_at FROM users WHERE id = ?`).get(id);
+}
+
+function updateUserPassword(id, passwordHash) {
+  const d = getDb();
+  d.prepare(`UPDATE users SET password_hash = ? WHERE id = ?`).run(passwordHash, id);
+}
+
 
 function upsertDeposit(dep) {
   const d = getDb();
@@ -191,4 +218,4 @@ function syncPaymentRecord(kind, rec) {
   } catch (e) { /* ignore individual */ }
 }
 
-module.exports = { getDb, ensure, upsertUser, upsertDeposit, upsertWithdrawal, insertLedger, upsertBoosterpotEvent, upsertBoosterpotWinner, syncAll, syncPaymentRecord, DB_FILE };
+module.exports = { getDb, ensure, upsertUser, createUser, findUserByPhone, getUserById, updateUserPassword, upsertDeposit, upsertWithdrawal, insertLedger, upsertBoosterpotEvent, upsertBoosterpotWinner, syncAll, syncPaymentRecord, DB_FILE };

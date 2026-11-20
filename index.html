@@ -8,6 +8,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
+  <script>
+    (function(){
+      const TOKEN_KEY = 'aviator_player_token';
+      try {
+        if (!localStorage.getItem(TOKEN_KEY) && location.pathname.split('/').pop() !== 'login.html') {
+          location.href = 'login.html';
+        }
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body>
   <div class="app">
@@ -15,12 +25,12 @@
       <div class="brand">
         <span class="logo-plane" aria-hidden="true">&#9992;</span>
         <span class="logo-text">AVIATOR</span>
-      </div>
-      <nav class="top-actions">
         <div class="balance-card">
           <span class="balance-label">Balance</span>
           <span class="balance-value" id="balance">KSh 10,000.00</span>
         </div>
+      </div>
+      <nav class="top-actions">
         <button class="btn btn-deposit" id="depositBtn">Deposit</button>
         <button class="btn btn-withdraw" id="withdrawBtn">Withdraw</button>
         <button class="btn btn-history" id="txHistoryBtn">History</button>
@@ -30,7 +40,10 @@
         <div class="profile-menu">
           <button class="profile-btn" id="profileBtn" aria-label="Profile">
             <span class="avatar" id="avatar">P</span>
-            <span class="profile-name" id="profileName">Player</span>
+            <div class="profile-info">
+              <span class="profile-name" id="profileName">Player</span>
+              <span class="profile-sub" id="profileSub">—</span>
+            </div>
           </button>
         </div>
       </nav>
@@ -366,6 +379,18 @@
           </ol>
         </section>
         <section>
+          <div class="rules-heading" style="color:#93c5fd">Account &amp; Login</div>
+          <ol style="margin:0;padding-left:20px;line-height:1.65;font-size:13px;display:flex;flex-direction:column;gap:6px">
+            <li><strong>Phone registration:</strong> Register with your phone number (07XX or 254XX format) and a password of at least 6 characters.</li>
+            <li><strong>One account per phone:</strong> A phone number can only be registered once. Duplicate registration is rejected.</li>
+            <li><strong>Guest play:</strong> You can play without logging in as a guest, but your balance and history are not saved if you clear your browser.</li>
+            <li><strong>Forgot password:</strong> If you forget your password, tap "Forgot password?" on the login page, enter your registered phone, and wait for the admin to send you a verification code on WhatsApp.</li>
+            <li><strong>Reset code:</strong> Enter the 6-digit code and a new password on the reset screen. The code expires in 30 minutes and can only be used once.</li>
+            <li><strong>Login:</strong> Enter your phone and password to log in. Your balance, profile, and chat history are tied to your account.</li>
+            <li><strong>Logout:</strong> Tap your profile button and select Logout to sign out. You will need to log in again to play.</li>
+          </ol>
+        </section>
+        <section>
           <div class="rules-heading" style="color:#fcd34d">Deposits</div>
           <ol style="margin:0;padding-left:20px;line-height:1.65;font-size:13px;display:flex;flex-direction:column;gap:6px">
             <li>Deposit by M-Pesa to <strong>Paybill 542542, Account 03708400476150</strong>.</li>
@@ -601,10 +626,17 @@
           <input type="text" id="usernameInput" maxlength="20" placeholder="Enter username">
         </div>
         <div class="field">
+          <label for="profilePhone">Phone number</label>
+          <input type="tel" id="profilePhone" maxlength="13" placeholder="e.g. 2547XXXXXXXX" readonly style="background:#0f1626;color:#94a3b8;">
+        </div>
+        <div class="field">
           <label>Avatar</label>
           <div class="avatar-grid" id="avatarGrid"></div>
         </div>
         <div class="hint" id="vipHint">Stay active (place bets/cash out) to earn VIP. VIP status is checked and resets every 10 minutes.</div>
+        <div class="field" style="margin-top:14px;">
+          <button class="btn btn-secondary" id="profileLogout" style="width:100%;background:#ef4444;border-color:#ef4444;color:#fff;">Logout</button>
+        </div>
 <div class="modal-actions">
           <button class="btn btn-secondary" id="profileCancel">Cancel</button>
           <button class="btn-primary" id="profileSave">Save</button>

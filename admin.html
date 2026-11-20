@@ -89,6 +89,7 @@
       <button class="btn btn-secondary" id="btnOpenManageFinances" style="position:relative;background:#7c3aed;border:none;color:#fff">Manage Finances</button>
       <button class="btn btn-secondary" id="btnOpenPnl" style="position:relative;background:#0f766e;border:none;color:#fff;font-weight:700">System P&amp;L</button>
       <button class="btn btn-secondary" id="btnOpenPublicChat" style="position:relative;background:#06b6d4;border:none;color:#06232b;font-weight:700">Public Chat<span class="admin-badge" id="publicChatBadge" style="display:none;position:absolute;top:-6px;right:-6px;width:12px;height:12px;background:#ef4444;border-radius:50%;border:2px solid #0b0f1a"></span></button>
+      <button class="btn btn-secondary" id="btnOpenPasswordResets" style="position:relative;background:#ef4444;border:none;color:#fff">Password Resets<span class="admin-badge" id="prBadge" style="display:none;position:absolute;top:-6px;right:-6px;width:12px;height:12px;background:#ef4444;border-radius:50%;border:2px solid #0b0f1a"></span></button>
     </div>
 
     <div class="admin-card"><h2>Current Round</h2>
@@ -441,8 +442,19 @@
       </div>
     </div>
   </div>
-</div>
 
+  <!-- Password Resets Modal -->
+  <div id="passwordResetsModal" class="admin-modal-overlay hidden">
+    <div class="admin-modal" style="max-width:760px">
+      <div class="admin-modal-header"><h3>Password Reset Requests</h3><button class="admin-modal-close" id="prCloseBtn">&times;</button></div>
+      <div class="admin-modal-body">
+        <div id="prSummary" class="muted" style="margin-bottom:10px;font-size:12px"></div>
+        <div id="prList" style="overflow:auto;max-height:56vh"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
 <script src="/socket.io/socket.io.js"></script>
 <script src="js/admin.js"></script>
 </body>

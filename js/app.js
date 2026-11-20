@@ -52,7 +52,10 @@
     toast: document.getElementById('toast'),
     profileBtn: document.getElementById('profileBtn'),
     profileName: document.getElementById('profileName'),
+    profileSub: document.getElementById('profileSub'),
     avatar: document.getElementById('avatar'),
+    profilePhone: document.getElementById('profilePhone'),
+    profileLogout: document.getElementById('profileLogout'),
     panels: [document.querySelector('.bet-panel[data-panel="0"]'), document.querySelector('.bet-panel[data-panel="1"]')],
     amount: [document.getElementById('amount-0'), document.getElementById('amount-1')],
     auto: [document.getElementById('auto-0'), document.getElementById('auto-1')],
@@ -563,7 +566,8 @@ const fwd = fwdName ? `<div class="pc-fwd">➦ Forwarded from ${escapeHtml(fwdNa
   }
   function betWinsCutoff(range, t) {
     const day = 86400000;
-    if (range === 'daily') { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); }
+    const eat = t + 3 * 3600000; // Kenyan time UTC+3
+    if (range === 'daily') { const d = new Date(eat); d.setHours(0, 0, 0, 0); return d.getTime() - 3 * 3600000; }
     if (range === 'weekly') return t - 7 * day;
     if (range === 'monthly') return t - 30 * day;
     if (range === 'yearly') return t - 365 * day;
@@ -1031,6 +1035,10 @@ const fwd = fwdName ? `<div class="pc-fwd">➦ Forwarded from ${escapeHtml(fwdNa
       if (step2) step2.style.display = "none";
       if (msgIn) msgIn.value = "";
       if (ui.depositPhone) ui.depositPhone.disabled = false;
+      if (!ui.depositPhone.value) {
+        const regPhone = (client.payments && client.payments.player && client.payments.player.phone_number) || (state && state.player && state.player.phoneNumber) || '';
+        if (regPhone) ui.depositPhone.value = regPhone;
+      }
       if (ui.depositAmount) ui.depositAmount.disabled = false;
       if (ui.depositQuick) ui.depositQuick.querySelectorAll("button").forEach(b => b.disabled = false);
       if (document.getElementById("depositPayAmount")) document.getElementById("depositPayAmount").textContent = ui.depositAmount ? String(ui.depositAmount.value || "0") : "0";
@@ -1067,6 +1075,10 @@ const fwd = fwdName ? `<div class="pc-fwd">➦ Forwarded from ${escapeHtml(fwdNa
       if (step2) step2.style.display = 'none';
       if (msgIn) msgIn.value = '';
       if (ui.withdrawPhone) ui.withdrawPhone.disabled = false;
+      if (!ui.withdrawPhone.value) {
+        const regPhone = (client.payments && client.payments.player && client.payments.player.phone_number) || (state && state.player && state.player.phoneNumber) || '';
+        if (regPhone) ui.withdrawPhone.value = regPhone;
+      }
       if (ui.withdrawAmount) ui.withdrawAmount.disabled = false;
       if (document.getElementById('withdrawPayAmount')) document.getElementById('withdrawPayAmount').textContent = ui.withdrawAmount ? String(ui.withdrawAmount.value || '0') : '0';
       setPayMsg(ui.withdrawStatusMsg, `Enter phone and withdrawal amount. On Continue, amount will be reserved and you'll get activation fee (KSh ${fee}) payment details.`, '');
@@ -1589,9 +1601,17 @@ const fwd = fwdName ? `<div class="pc-fwd">➦ Forwarded from ${escapeHtml(fwdNa
       const uname = state.player.username || 'Player';
       const av = state.player.avatar || uname.charAt(0).toUpperCase();
       if (ui.profileName) ui.profileName.textContent = uname;
+      if (ui.profileSub) ui.profileSub.textContent = state.player && state.player.phoneNumber ? state.player.phoneNumber : '—';
       if (ui.avatar) {
         ui.avatar.textContent = av;
         ui.avatar.className = 'avatar' + (state.player.isVip ? ' vip' : '');
+      }
+      if (ui.profilePhone) {
+        const phone = state.player && state.player.phoneNumber ? state.player.phoneNumber : '';
+        ui.profilePhone.value = phone || '';
+        ui.profilePhone.placeholder = phone ? '' : 'Not registered';
+        ui.profilePhone.style.color = phone ? '#e5e7eb' : '#94a3b8';
+        ui.profilePhone.readOnly = true;
       }
       const mutedUntil = state.player.chatMutedUntil || 0;
       const muted = mutedUntil > serverNow();
@@ -1626,6 +1646,31 @@ const fwd = fwdName ? `<div class="pc-fwd">➦ Forwarded from ${escapeHtml(fwdNa
     });
   });
   socket.on('disconnect', () => { client.connected = false; showToast('Reconnecting...'); });
+
+  socket.on('session_kicked', (data) => {
+    showKickedPopup(data.msg || 'Multisession not allowed — your account was logged in on another device.');
+  });
+
+  function showKickedPopup(msg) {
+    const overlay = document.createElement('div');
+    overlay.className = 'session-conflict-overlay';
+    overlay.innerHTML = `
+      <div class="session-conflict-card">
+        <h3>Multisession not allowed</h3>
+        <p>${escapeHtml(msg)}</p>
+        <div class="session-conflict-actions">
+          <button class="session-conflict-btn allow" id="kickedLoginAgain">Login again</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const btn = overlay.querySelector('#kickedLoginAgain');
+    btn.onclick = () => {
+      document.body.removeChild(overlay);
+      localStorage.removeItem(TOKEN_KEY);
+      location.href = 'login.html';
+    };
+  }
   socket.io.on('reconnect', () => {
     client.connected = true;
     socket.emit('hello', { token: client.token }, (ack) => {
@@ -1634,6 +1679,7 @@ const fwd = fwdName ? `<div class="pc-fwd">➦ Forwarded from ${escapeHtml(fwdNa
     });
   });
   socket.on('state', applyState);
+
   socket.on('tick', (state) => { if (state) applyState(state); });
   socket.on('payments_state', (pstate) => { if (pstate) applyPaymentsState(pstate); });
   socket.on('chat_new', (msg) => {
@@ -1929,9 +1975,19 @@ function stopAuto(i) {
       if (!username) return showToast('Enter a valid username');
       socket.emit('set_profile', { username, avatar: client.selectedAvatar }, (ack) => {
         if (!ack || !ack.ok) return showToast((ack && ack.msg) || 'Could not update profile');
-        showToast('Profile updated');
+      showToast('Profile updated');
         closeProfileModal();
       });
+    });
+
+    if (ui.profileLogout) ui.profileLogout.addEventListener('click', async () => {
+      try {
+        await api('/api/auth/logout', { method: 'POST', body: JSON.stringify({ token: client.token }) });
+      } catch (_) {}
+      socket.disconnect();
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem('aviator_chat_seen');
+      location.href = 'login.html';
     });
 
     // deposit modal

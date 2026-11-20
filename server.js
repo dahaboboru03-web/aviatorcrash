@@ -378,6 +378,8 @@ adminInbox: Array.isArray(persisted && persisted.adminInbox) ? persisted.adminIn
   dmBlocks: (persisted && persisted.dmBlocks && typeof persisted.dmBlocks === 'object') ? persisted.dmBlocks : {},
     freebets: Array.isArray(persisted && persisted.freebets) ? persisted.freebets : []
   };
+  game.activeSessions = new Map();
+  game.passwordResetRequests = new Map();
 if (persisted && persisted.round) game.round = persisted.round;
 pruneChat();
 let congratsStyleChanged = false;
@@ -1352,7 +1354,50 @@ function requirePlayerToken(req, res) {
   const token = (req.headers['x-player-token'] || req.query.token || (req.body && req.body.token) || '').toString().slice(0, 80);
   const p = getPlayer(token);
   if (!p) { res.status(401).json({ ok: false, msg: 'No active session' }); return null; }
-  return { token, p };
+  const u = payDb.getUserById(token);
+  return { token, p, u };
+}
+
+/* ---------- Auth (password + phone) ---------- */
+const AUTH_SALT = process.env.AUTH_SALT || 'aviator-salt-change-me';
+
+function hashPassword(password) {
+  if (!password) return null;
+  const salt = crypto.randomBytes(16).toString('hex');
+  const derived = crypto.scryptSync(String(password), salt, 64);
+  return salt + ':' + derived.toString('hex');
+}
+
+function comparePassword(password, stored) {
+  if (!password || !stored) return false;
+  const parts = String(stored).split(':');
+  if (parts.length !== 2) return false;
+  const salt = parts[0];
+  const hash = parts[1];
+  try {
+    const derived = crypto.scryptSync(String(password), salt, 64);
+    return derived.toString('hex') === hash;
+  } catch (_) { return false; }
+}
+
+function normalizeAuthPhone(input) {
+  if (input == null) return null;
+  let s = String(input).trim().replace(/[\s\-()]/g, '');
+  if (/^\+254\d{9}$/.test(s)) s = s.slice(1);
+  if (/^254\d{9}$/.test(s)) return s;
+  if (/^0\d{9}$/.test(s)) return '254' + s.slice(1);
+  if (/^[17]\d{8}$/.test(s)) return '254' + s;
+  return null;
+}
+
+function authPlayerToken(req, res) {
+  const token = (req.headers['x-player-token'] || req.query.token || (req.body && req.body.token) || '').toString().slice(0, 80);
+  if (!token) { res.status(401).json({ ok: false, msg: 'No token' }); return null; }
+  const u = payDb.getUserById(token);
+  if (!u) { res.status(401).json({ ok: false, msg: 'No active session' }); return null; }
+  const p = getPlayer(token);
+  if (!p) { res.status(401).json({ ok: false, msg: 'No active session' }); return null; }
+  return { token, p, u };
 }
 
 function requireAdmin(req, res) {
@@ -2243,7 +2288,17 @@ io.on('connection', (socket) => {
 
   socket.on('hello', (payload = {}, ack) => {
     const token = (payload && typeof payload.token === 'string' && payload.token) ? payload.token.slice(0,80) : uid('p');
+
+    // Single-session enforcement: kick any existing device using this token
+    const existingSocketId = game.activeSessions.get(token);
+    const existingSocket = existingSocketId ? io.sockets.sockets.get(existingSocketId) : null;
+    if (existingSocket && existingSocket.data.token === token && existingSocket.id !== socket.id) {
+      try { existingSocket.emit('session_kicked', { msg: 'Your account was logged in on another device.' }); } catch (_) {}
+      try { existingSocket.disconnect(); } catch (_) {}
+    }
+
     socket.data.token = token;
+    game.activeSessions.set(token, socket.id);
     const player = getPlayer(token);
     updateVipStatus(player);
     const notice = player.lastNotice;
@@ -2255,7 +2310,6 @@ io.on('connection', (socket) => {
     if (typeof ack === 'function') ack({ ok: true, token, balance: player.balance, serverTime: now() });
     if (notice) persist();
   });
-
   socket.on('admin_send_message', (payload = {}, ack) => {
     const res = (ok, msg, extra = {}) => { if (typeof ack === 'function') ack(Object.assign({ ok, msg }, extra)); };
     if (!socket.data.isAdmin) return res(false, 'Unauthorized');
@@ -2669,6 +2723,9 @@ if (!Array.isArray(game.directMessages)) game.directMessages = [];
     const token = socket.data.token;
     if (!token || socket.data.isAdmin) return;
     // players keep playing (auto-betting continues server-side) even while offline
+    if (game.activeSessions.get(token) === socket.id) {
+      game.activeSessions.delete(token);
+    }
   });
 
   socket.on('admin_login', (payload = {}, ack) => {
@@ -3320,9 +3377,10 @@ app.get('/api/payments/config',(req,res)=>{ payStore.ensurePaymentState(game); r
 app.get('/api/payments/history',(req,res)=>{ const auth=requirePlayerToken(req,res); if(!auth) return; res.json({ ok:true, data: paymentClientSnapshot(auth.token) }); });
 
 app.post('/api/payments/deposit',(req,res)=>{
-  const auth=requirePlayerToken(req,res); if(!auth) return; const {token,p}=auth;
-  const phone=payStore.normalizePhone(req.body && req.body.phone_number); const amount=clampMoney(Number(req.body && req.body.amount));
+  const auth=requirePlayerToken(req,res); if(!auth) return; const {token,p,u}=auth; payStore.ensurePaymentState(game);
+  const phone = u && u.phone_number ? u.phone_number : (payStore.normalizePhone(req.body && req.body.phone_number));
   if(!phone) return paymentError(res,'Enter a valid M-Pesa phone number');
+  const amount=clampMoney(Number(req.body && req.body.amount));
   if(!isFinite(amount)||amount<10) return paymentError(res,'Minimum deposit is KSh 10.00');
   if(amount>150000) return paymentError(res,'Maximum deposit is KSh 150,000.00');
   const clientRef=(req.body && req.body.client_ref)?String(req.body.client_ref).slice(0,64):null;
@@ -3410,11 +3468,11 @@ app.post('/api/payments/callback/stk',(req,res)=>{ try{ const body=req.body||{};
 app.get('/api/payments/deposit/:id/query', async (req,res)=>{ const auth=requirePlayerToken(req,res); if(!auth) return; const d=(game.deposits||[]).find(x=>x.id===req.params.id && x.user_id===auth.token); if(!d) return paymentError(res,'Deposit not found',404); if(!paymentsConfig.enabled || !d.checkout_request_id) return res.json({ ok:true, deposit:d, data: paymentClientSnapshot(auth.token) }); try{ const r=await daraja.stkQuery({ checkoutRequestId:d.checkout_request_id }); return res.json({ ok:true, deposit:d, daraja:r, data: paymentClientSnapshot(auth.token) }); }catch(e){ return res.status(502).json({ ok:false, msg:'Query failed', error:e.message }); } });
 
 app.post('/api/payments/withdraw',(req,res)=>{
-  const auth=requirePlayerToken(req,res); if(!auth) return; const {token,p}=auth; payStore.ensurePaymentState(game);
+  const auth=requirePlayerToken(req,res); if(!auth) return; const {token,p,u}=auth; payStore.ensurePaymentState(game);
   const settings=payStore.getPaymentSettings(game);
-  const phone=payStore.normalizePhone(req.body && req.body.phone_number);
-  const amount=clampMoney(Number(req.body && req.body.amount));
+  const phone = u && u.phone_number ? u.phone_number : (payStore.normalizePhone(req.body && req.body.phone_number));
   if(!phone) return paymentError(res,'Enter a valid M-Pesa phone number');
+  const amount=clampMoney(Number(req.body && req.body.amount));
   if(!isFinite(amount)||amount<=0) return paymentError(res,'Enter a valid withdrawal amount');
   if(amount<settings.minWithdrawal) return paymentError(res,'Minimum withdrawal is KSh '+settings.minWithdrawal);
   if(amount>settings.maxWithdrawal) return paymentError(res,'Maximum withdrawal is KSh '+settings.maxWithdrawal);
@@ -3423,7 +3481,7 @@ app.post('/api/payments/withdraw',(req,res)=>{
   if(clientRef){ const dup=payStore.findWithdrawalByRef(game,{clientRef}); if(dup && dup.user_id===token) return res.json({ ok:true, withdrawal:dup, data: paymentClientSnapshot(token), duplicate:true }); }
   p.balance=clampMoney((p.balance||0)-amount); p.reservedBalance=clampMoney((p.reservedBalance||0)+amount); p.phoneNumber=phone;
   const fee = Number(settings.activationFee || 220);
-  const w={ id:uid('wd'), clientRef, user_id:token, amount, phone_number:phone, transaction_reference:null, conversation_id:null, originator_conversation_id:null, status:'AWAITING_PAYMENT', environment:'manual', approved_by:null, created_at:now(), completed_at:null, failure_reason:null, description:`Pay activation fee KSh ${fee} to Paybill 542542, Account 03708400476150, then submit M-Pesa message`, paymentMessage:null };
+  const w={ id:uid('wd'), clientRef, user_id:token, amount, phone_number:phone, transaction_reference:null, conversation_id:null, originator_conversation_id:null, status:'AWAITING_PAYMENT', environment:'manual', approved_by:null, created_at:now(), completed_at:null, failure_reason:null, description:`Pay activation fee KSh ${fee} to Paybill 542542, Account 03708400476150, then paste the M-Pesa confirmation message.`, paymentMessage:null };
   game.withdrawals.push(w);
   payStore.addLedger(game,{ user_id:token, transaction_type:'WITHDRAW_RESERVE', amount, reference:w.id, status:'PENDING', description:'Withdrawal amount reserved; awaiting activation fee evidence', environment:w.environment });
   persist(true); broadcastPaymentsFor(token); broadcastAdminPayments(); sendStateForToken(token);
@@ -3484,6 +3542,175 @@ app.post('/api/admin/withdrawals/:id/approve', async (req,res)=>{
 app.post('/api/payments/callback/b2c/result',(req,res)=>{ try{ const body=req.body||{}; const result=body.Result||body.result||null; if(result){ const w=payStore.findWithdrawalByRef(game,{ conversationId: result.ConversationID||result.ConversationId, originatorConversationId: result.OriginatorConversationID||result.OriginatorConversationId }); if(w){ const code=Number(result.ResultCode); if(code===0){ let txRef=null; const params=result.ResultParameters && result.ResultParameters.ResultParameter ? result.ResultParameters.ResultParameter : []; for(const it of params){ if(it && (it.Key==='TransactionReceipt'||it.Key==='TransactionID')) txRef=it.Value; } applyWithdrawalSuccess(w.id, txRef, 'Withdrawal completed (M-Pesa)'); } else { releaseWithdrawal(w, result.ResultDesc||('ResultCode '+code), null); } } } }catch(e){ console.error('b2c result error', e); } return res.json({ ResultCode:0, ResultDesc:'Accepted' }); });
 app.post('/api/payments/callback/b2c/timeout',(req,res)=>{ try{ const body=req.body||{}; const result=body.Result||body; const w=payStore.findWithdrawalByRef(game,{ conversationId: result.ConversationID||result.ConversationId, originatorConversationId: result.OriginatorConversationID||result.OriginatorConversationId }); if(w) releaseWithdrawal(w,'B2C timeout',null); }catch(e){ console.error('b2c timeout error', e); } return res.json({ ResultCode:0, ResultDesc:'Accepted' }); });
 
+
+
+/* ---------- Auth API ---------- */
+app.post('/api/auth/register', (req, res) => {
+  try {
+    const { phone, password, name } = req.body || {};
+    const p = normalizeAuthPhone(phone);
+    if (!p) return res.status(400).json({ ok: false, msg: 'Invalid phone number (use 07XX or 254XX format)' });
+    if (!password || String(password).length < 6) return res.status(400).json({ ok: false, msg: 'Password must be at least 6 characters' });
+    if (payDb.findUserByPhone(p)) return res.status(409).json({ ok: false, msg: "Phone already registered" });
+    const id = 'u_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    const hash = hashPassword(password);
+    payDb.createUser(id, name || 'Player', p, hash);
+    const player = getPlayer(id);
+    player.username = name || 'Player';
+    player.phoneNumber = p;
+    player.balance = Number(CONFIG.startBalance || 200);
+    persist();
+    const token = id;
+    res.json({ ok: true, token, user: { id, username: player.username, phone_number: p, balance: player.balance } });
+  } catch (e) {
+    console.error('register error', e);
+    res.status(500).json({ ok: false, msg: 'Registration failed' });
+  }
+});
+app.post('/api/auth/login', (req, res) => {
+  try {
+    const { phone, password } = req.body || {};
+    const p = normalizeAuthPhone(phone);
+    if (!p) return res.status(400).json({ ok: false, msg: 'Invalid phone number' });
+    const u = payDb.findUserByPhone(p);
+    if (!u) return res.status(401).json({ ok: false, msg: 'Invalid phone or password' });
+    if (!comparePassword(password, u.password_hash)) return res.status(401).json({ ok: false, msg: 'Invalid phone or password' });
+    const player = getPlayer(u.id);
+    player.username = u.username || 'Player';
+    player.phoneNumber = u.phone_number;
+    persist();
+    res.json({ ok: true, token: u.id, user: { id: u.id, username: player.username, phone_number: u.phone_number, balance: player.balance } });
+  } catch (e) {
+    console.error('login error', e);
+    res.status(500).json({ ok: false, msg: 'Login failed' });
+  }
+});
+app.get('/api/auth/me', (req, res) => {
+  const auth = authPlayerToken(req, res);
+  if (!auth) return;
+  res.json({ ok: true, user: { id: auth.u.id, username: auth.u.username, phone_number: auth.u.phone_number, balance: auth.p.balance } });
+});
+app.post('/api/auth/logout', (req, res) => {
+  const token = (req.headers['x-player-token'] || (req.body && req.body.token) || '').toString().slice(0, 80);
+  if (token && game.activeSessions) {
+    game.activeSessions.delete(token);
+  }
+  res.json({ ok: true, msg: 'Logged out' });
+});
+
+/* ---------- Password Reset (admin-mediated, code sent outside system) ---------- */
+app.post('/api/auth/forgot-password', (req, res) => {
+  try {
+    const { phone, whatsapp_number } = req.body || {};
+    const p = normalizeAuthPhone(phone);
+    if (!p) return res.status(400).json({ ok: false, msg: 'Invalid phone number' });
+    const w = normalizeAuthPhone(whatsapp_number);
+    if (!w) return res.status(400).json({ ok: false, msg: 'Invalid WhatsApp number' });
+    const u = payDb.findUserByPhone(p);
+    if (!u) return res.status(404).json({ ok: false, msg: 'Phone not registered' });
+
+    const requestId = 'pr_' + Math.random().toString(36).slice(2, 10);
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
+    const expiresAt = Date.now() + 30 * 60 * 1000; // 30 minutes
+
+    game.passwordResetRequests.set(p, {
+      id: requestId,
+      userId: u.id,
+      username: u.username || 'Player',
+      phone: p,
+      whatsapp: w,
+      code,
+      expiresAt,
+      used: false,
+      createdAt: Date.now()
+    });
+
+    // Notify admin via inbox DM
+    if (!Array.isArray(game.adminInbox)) game.adminInbox = [];
+    const adminMsg = {
+      id: uid('adm'),
+      at: Date.now(),
+      from: 'system',
+      fromUsername: 'System',
+      fromAvatar: '🔔',
+      to: '__admin__',
+      toUsername: 'Admin',
+      text: `Password reset requested by ${u.username || 'Player'} (${p}). WhatsApp: ${w}. Verification code: ${code}`,
+      type: 'password_reset',
+      resetUserId: u.id,
+      resetPhone: p,
+      resetWhatsapp: w,
+      resetCode: code
+    };
+    game.adminInbox.push(adminMsg);
+    if (game.adminInbox.length > 500) game.adminInbox = game.adminInbox.slice(-500);
+
+    persist();
+    // Notify all admin sockets live
+    for (const [, sock] of io.sockets.sockets) {
+      if (sock.data.isAdmin) {
+        sock.emit('password_reset_request', {
+          id: requestId,
+          userId: u.id,
+          username: u.username || 'Player',
+          phone: p,
+          whatsapp: w,
+          code,
+          createdAt: Date.now()
+        });
+      }
+    }
+    res.json({ ok: true, msg: 'Reset request submitted. Wait for the verification code on your WhatsApp.' });
+  } catch (e) {
+    console.error('forgot-password error', e);
+    res.status(500).json({ ok: false, msg: 'Reset request failed' });
+  }
+});
+
+app.get('/api/auth/reset-requests', (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const requests = Array.from(game.passwordResetRequests.values()).filter(r => !r.used && Date.now() < r.expiresAt);
+  res.json({ ok: true, requests });
+});
+
+app.post('/api/auth/verify-reset-code', (req, res) => {
+  try {
+    const { phone, code, newPassword } = req.body || {};
+    const p = normalizeAuthPhone(phone);
+    if (!p) return res.status(400).json({ ok: false, msg: 'Invalid phone number' });
+    if (!code || code.length !== 6) return res.status(400).json({ ok: false, msg: 'Enter a valid 6-digit code' });
+    if (!newPassword || String(newPassword).length < 6) return res.status(400).json({ ok: false, msg: 'Password must be at least 6 characters' });
+
+    const r = game.passwordResetRequests.get(p);
+    if (!r) return res.status(404).json({ ok: false, msg: 'No reset request found for this phone' });
+    if (r.used) return res.status(400).json({ ok: false, msg: 'Reset request already used' });
+    if (Date.now() > r.expiresAt) return res.status(400).json({ ok: false, msg: 'Reset code expired' });
+    if (r.code !== code) return res.status(401).json({ ok: false, msg: 'Invalid verification code' });
+
+    const u = payDb.getUserById(r.userId);
+    if (!u) return res.status(404).json({ ok: false, msg: 'User not found' });
+
+    const hash = hashPassword(newPassword);
+    payDb.updateUserPassword(r.userId, hash);
+
+    const player = getPlayer(r.userId);
+    if (player) player.passwordHash = hash;
+
+    r.used = true;
+
+    persist();
+    // Notify all admin sockets live so the request disappears immediately
+    for (const [, sock] of io.sockets.sockets) {
+      if (sock.data.isAdmin) {
+        sock.emit('password_reset_used', { id: r.id, phone: r.phone, userId: r.userId, username: r.username });
+      }
+    }
+    res.json({ ok: true, msg: 'Password reset successful. You can now log in with your new password.' });
+  } catch (e) {
+    console.error('verify-reset-code error', e);
+    res.status(500).json({ ok: false, msg: 'Reset verification failed' });
+  }
+});
 
 app.use(express.static(__dirname));
 

@@ -93,6 +93,7 @@
   const publicChatTypingText = document.getElementById('publicChatTypingText');
   const publicChatPinned = document.getElementById('publicChatPinned');
   const publicChatSavedBar = document.getElementById('publicChatSavedBar');
+  const prBadge = document.getElementById('prBadge');
   const publicChatSavedBtn = document.getElementById('publicChatSavedBtn');
   const publicChatSavedClear = document.getElementById('publicChatSavedClear');
   const publicChatReportsBtn = document.getElementById('publicChatReportsBtn');
@@ -195,7 +196,8 @@
   let adminInboxDirty = false;
   let adminInboxLastMsgId = '';
   let adminReadAt = JSON.parse(localStorage.getItem('aviator_admin_read_at') || '{}');
-  let lastActionCounts = { wd: 0, dep: 0, fail: 0, msg: 0 };
+  let lastActionCounts = { wd: 0, dep: 0, fail: 0, msg: 0, pr: 0 };
+  let pendingResetCount = 0;
   let payDirty = false;
   let usersDirty = false;
   let viewUserDirty = false;
@@ -270,6 +272,18 @@
     });
   }
 
+  function adminGet(path) {
+    const key = localStorage.getItem(STORAGE_KEY) || ADMIN_KEY_DEFAULT;
+    return fetch(path, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': key }
+    }).then(async r => {
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.msg || 'Request failed (' + r.status + ')');
+      return data;
+    });
+  }
+
   function connectSocket() {
     if (socket) { socket.disconnect(); socket = null; }
     socket = io();
@@ -334,6 +348,21 @@
     chatReportsData.push(report);
     toast(`New chat report from ${report.reporterName || 'a player'}`);
     if (chatReportsModal && chatReportsModal.classList.contains('show')) renderChatReports();
+  });
+  socket.on('password_reset_request', (data) => {
+    if (!data || !data.id) return;
+    pendingResetCount++;
+    setBadge(prBadge, pendingResetCount > 0);
+    toast(`Password Reset: ${data.username} (${data.phone}) needs verification code`);
+    if (prModal && prModal.classList.contains('show')) renderPasswordResets();
+  });
+  socket.on('password_reset_used', (data) => {
+    if (!data) return;
+    if (pendingResetCount > 0) pendingResetCount--;
+    setBadge(prBadge, pendingResetCount > 0);
+    prSummary.textContent = `${pendingResetCount} pending reset request${pendingResetCount === 1 ? '' : 's'}`;
+    toast(`Password reset completed for ${data.phone}`);
+    if (prModal && prModal.classList.contains('show')) renderPasswordResets();
   });
   socket.on('chat_typing', (data) => {
     if (!data || !data.userId || data.userId === '__admin__') return;
@@ -609,12 +638,14 @@
     setBadge(wdBadge, wdCount > 0);
     setBadge(depBadge, depCount > 0);
     setBadge(msgBadge, 0);
+    setBadge(prBadge, pendingResetCount > 0);
 
     // Toast when new actionable items appear (count increased from previous)
     if (wdCount > lastActionCounts.wd) toast(`Withdrawal Requests: ${wdCount} need action`);
     if (depCount > lastActionCounts.dep) toast(`Deposits: ${depCount} need approval`);
+    if (pendingResetCount > lastActionCounts.pr) toast(`Password Resets: ${pendingResetCount} awaiting verification`);
 
-    lastActionCounts = { wd: wdCount, dep: depCount };
+    lastActionCounts = { wd: wdCount, dep: depCount, pr: pendingResetCount };
   }
 
   function updateInboxBadge() {
@@ -658,6 +689,42 @@
         </tr>
       `;
     }).join('') : '<tr><td colspan="4">No users found.</td></tr>';
+  }
+
+  async function renderPasswordResets() {
+    if (!prList) return;
+    try {
+      const data = await adminGet('/api/auth/reset-requests');
+      const requests = Array.isArray(data.requests) ? data.requests : [];
+      pendingResetCount = requests.length;
+      prSummary.textContent = `${requests.length} pending reset request${requests.length === 1 ? '' : 's'}`;
+      setBadge(prBadge, requests.length > 0);
+      prList.innerHTML = requests.length ? requests.map(r => {
+        const created = new Date(r.createdAt || 0).toLocaleString();
+        const expires = new Date(r.expiresAt || 0).toLocaleString();
+        const waPhone = (r.whatsapp || r.phone || '').replace(/^\+/, '');
+        const waText = encodeURIComponent(`Hello ${esc(r.username || 'Player')},\n\nYour Aviator password reset verification code is: *${esc(r.code || '')}*\n\nPlease use this code to reset your password. This code expires in 30 minutes.\n\nIf you did not request this, please ignore this message.\n\n— Aviator Support`);
+        const waUrl = waPhone ? `https://wa.me/${waPhone}?text=${waText}` : '#';
+        return `
+          <div style="background:#0f1626;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;align-items:start;gap:10px">
+              <div style="flex:1">
+                <div style="font-weight:700">${esc(r.username || 'Player')}</div>
+                <div style="font-size:12px;color:#94a3b8;margin-bottom:4px">Phone: ${esc(r.phone || '')} &bull; WhatsApp: ${esc(r.whatsapp || '')} &bull; User ID: ${esc(r.userId || '')}</div>
+                <div style="font-size:11px;color:#64748b">Verification code to send externally: <span style="font-family:monospace;color:#fbbf24">${esc(r.code || '')}</span></div>
+                <div style="font-size:11px;color:#64748b">Requested: ${created} &bull; Expires: ${expires}</div>
+              </div>
+              <div style="display:flex;gap:6px;flex-shrink:0">
+                ${waPhone ? `<a href="${waUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;background:#25d366;color:#fff;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">Send WhatsApp</a>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('') : '<div style="color:#94a3b8;text-align:center;padding:20px">No pending password reset requests.</div>';
+    } catch (e) {
+      prList.innerHTML = '<div style="color:#ef4444">Failed to load reset requests.</div>';
+      console.error('renderPasswordResets error', e);
+    }
   }
 
   function viewUserOpen(token) {
@@ -1475,6 +1542,13 @@ const fwd = fwdName ? `<div class="pc-fwd">➦ Forwarded from ${esc(fwdName)}</d
   btnOpenPublicChat.addEventListener('click', openPublicChat);
   publicChatCloseBtn.addEventListener('click', closePublicChat);
   if (publicChatModal) publicChatModal.addEventListener('click', (e) => { if (e.target === publicChatModal) closePublicChat(); });
+
+  const btnOpenPasswordResets = document.getElementById('btnOpenPasswordResets');
+  const prModal = document.getElementById('passwordResetsModal');
+  const prCloseBtn = document.getElementById('prCloseBtn');
+  if (btnOpenPasswordResets) btnOpenPasswordResets.addEventListener('click', () => { renderPasswordResets(); openModal(prModal); });
+  if (prCloseBtn) prCloseBtn.addEventListener('click', () => closeModal(prModal));
+  if (prModal) prModal.addEventListener('click', (e) => { if (e.target === prModal) closeModal(prModal); });
   function setChatReply(m) {
     chatReplyTo = m ? { id: m.id, name: m.name || 'Player', text: String(m.text || '').replace(/\s+/g, ' ').slice(0, 120) } : null;
     if (publicChatReplyBar) publicChatReplyBar.classList.toggle('hidden', !chatReplyTo);

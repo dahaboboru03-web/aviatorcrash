@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aviator &bull; Login</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    body { margin:0; background:#0b1220; color:#e5e7eb; font-family:Inter,system-ui,sans-serif; display:flex; align-items:center; justify-content:center; min-height:100dvh; }
+    .auth-card { width:100%; max-width:420px; padding:24px; box-sizing:border-box; }
+    .auth-brand { text-align:center; margin-bottom:24px; }
+    .auth-brand .logo-plane { font-size:28px; }
+    .auth-brand .logo-text { font-size:20px; font-weight:800; letter-spacing:2px; vertical-align:middle; }
+    .auth-box { background:#111827; border:1px solid #1f2937; border-radius:16px; padding:28px 24px; }
+    .auth-tabs { display:flex; gap:8px; margin-bottom:20px; border-bottom:1px solid #1f2937; }
+    .auth-tab { flex:1; background:transparent; border:none; border-bottom:2px solid transparent; color:#94a3b8; padding:10px; font-size:14px; font-weight:600; cursor:pointer; }
+    .auth-tab.active { color:#3b82f6; border-bottom-color:#3b82f6; }
+    .auth-panel { display:none; }
+    .auth-panel.active { display:block; animation: fadeIn .25s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+    .form-group { margin-bottom:14px; }
+    .form-label { display:block; font-size:12px; color:#94a3b8; margin-bottom:6px; font-weight:600; }
+    .form-input { width:100%; padding:10px 12px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#e5e7eb; font-size:14px; box-sizing:border-box; }
+    .form-input:focus { outline:none; border-color:#3b82f6; }
+    .btn-auth { width:100%; padding:12px; border-radius:10px; border:none; background:#3b82f6; color:#fff; font-size:14px; font-weight:700; cursor:pointer; margin-top:8px; }
+    .btn-auth:hover { background:#2563eb; }
+    .btn-auth:disabled { opacity:.6; cursor:not-allowed; }
+    .divider { display:flex; align-items:center; gap:10px; margin:18px 0; color:#6b7280; font-size:12px; }
+    .divider::before,.divider::after { content:''; flex:1; height:1px; background:#1f2937; }
+    .auth-link { text-align:center; font-size:13px; color:#94a3b8; margin-top:16px; }
+    .auth-link a { color:#3b82f6; text-decoration:none; cursor:pointer; }
+    .auth-link a:hover { text-decoration:underline; }
+    .auth-msg { font-size:13px; margin-bottom:12px; padding:8px 10px; border-radius:8px; display:none; }
+    .auth-msg.error { background:#7f1d1d; border:1px solid #ef4444; color:#fecaca; }
+    .auth-msg.ok { background:#14532d; border:1px solid #22c55e; color:#bbf7d0; }
+    .footer-note { text-align:center; font-size:11px; color:#6b7280; margin-top:20px; }
+  </style>
+</head>
+<body>
+  <div class="auth-card">
+    <div class="auth-brand">
+      <span class="logo-plane" aria-hidden="true">&#9992;</span>
+      <span class="logo-text">AVIATOR</span>
+    </div>
+    <div class="auth-box">
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login">Login</button>
+        <button class="auth-tab" data-tab="register">Create Account</button>
+      </div>
+
+      <div class="auth-panel active" id="panel-login">
+        <div id="msg-login" class="auth-msg error"></div>
+        <div class="form-group">
+          <label class="form-label">Phone number</label>
+          <input type="tel" id="login-phone" class="form-input" placeholder="0712345678 or 254712345678" maxlength="13">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="login-password" class="form-input" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="current-password">
+        </div>
+        <button class="btn-auth" id="btn-login">Login</button>
+        <div class="auth-link">
+          Don't have an account? <span id="go-register-from-login" style="color:#3b82f6;cursor:pointer;">Create one</span>
+        </div>
+        <div class="auth-link">
+          Forgot password? <span id="go-forgot" style="color:#fbbf24;cursor:pointer;">Reset</span>
+        </div>
+      </div>
+
+    <div class="auth-panel" id="panel-register">
+      <div id="msg-register" class="auth-msg error"></div>
+      <div class="form-group">
+        <label class="form-label">Phone number</label>
+        <input type="tel" id="reg-phone" class="form-input" placeholder="0712345678 or 254712345678" maxlength="13">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Name (optional)</label>
+        <input type="text" id="reg-name" class="form-input" placeholder="Your name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="reg-password" class="form-input" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="new-password">
+      </div>
+      <button class="btn-auth" id="btn-register">Create Account</button>
+      <div class="auth-link">
+        Already have an account? <span id="go-login-from-register" style="color:#3b82f6;cursor:pointer;">Login</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-modal-overlay hidden" id="forgotModal">
+    <div class="auth-box">
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="forgot">Forgot Password</button>
+      </div>
+      <div class="auth-panel active" id="panel-forgot">
+        <div id="msg-forgot" class="auth-msg error"></div>
+
+        <!-- Step 1: Phone number -->
+        <div id="forgot-step-1">
+          <div class="form-group">
+            <label class="form-label">Phone number</label>
+            <input type="tel" id="forgot-phone" class="form-input" placeholder="0712345678 or 254712345678" maxlength="13">
+          </div>
+          <div class="form-group" style="font-size:12px;color:#94a3b8;margin-top:8px;">
+            Enter your registered phone number. We'll send a verification code request to the admin.
+          </div>
+          <button class="btn-auth" id="btn-forgot-send">Send Verification Code</button>
+        </div>
+
+        <!-- Step 2: WhatsApp number -->
+        <div id="forgot-step-2" style="display:none">
+          <div class="form-group">
+            <label class="form-label">WhatsApp number</label>
+            <input type="tel" id="forgot-whatsapp" class="form-input" placeholder="0712345678 or 254712345678" maxlength="13">
+          </div>
+          <div class="form-group" style="font-size:12px;color:#94a3b8;margin-top:8px;">
+            Enter the WhatsApp number where you want to receive the verification code. Can be any number (3rd party allowed).
+          </div>
+          <div class="form-group" style="font-size:13px;color:#fbbf24;margin-top:8px;">
+            Admin WhatsApp for urgent help: <span style="color:#fff;cursor:pointer;text-decoration:underline" onclick="window.open('https://wa.me/254795619242','_blank')">0795619242</span>
+          </div>
+          <button class="btn-auth" id="btn-forgot-whatsapp">Submit WhatsApp Number</button>
+          <div class="auth-link" style="margin-top:10px;">
+            Back to <span id="go-back-step1" style="color:#3b82f6;cursor:pointer;">Step 1</span>
+          </div>
+        </div>
+
+        <!-- Step 3: Code + new password -->
+        <div id="forgot-step-3" style="display:none">
+          <div class="form-group">
+            <label class="form-label">Verification code</label>
+            <input type="text" id="forgot-code" class="form-input" placeholder="123456" maxlength="6">
+          </div>
+          <div class="form-group">
+            <label class="form-label">New password</label>
+            <input type="password" id="forgot-new-password" class="form-input" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="new-password">
+          </div>
+          <div class="form-group" style="font-size:13px;color:#fbbf24;margin-top:8px;">
+            Admin WhatsApp for urgent help: <span style="color:#fff;cursor:pointer;text-decoration:underline" onclick="window.open('https://wa.me/254795619242','_blank')">0795619242</span>
+          </div>
+          <button class="btn-auth" id="btn-forgot-reset">Reset Password</button>
+          <div class="auth-link" style="margin-top:10px;">
+            Back to <span id="go-back-step2" style="color:#3b82f6;cursor:pointer;">Step 2</span>
+          </div>
+        </div>
+
+        <div class="auth-link">
+          Remember your password? <span id="go-login-from-forgot" style="color:#3b82f6;cursor:pointer;">Login</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BASE = '';
+    const TOKEN_KEY = 'aviator_player_token';
+
+    function $el(id){ return document.getElementById(id); }
+    function showMsg(id, text, ok){
+      const el = $el(id);
+      el.textContent = text;
+      el.className = 'auth-msg ' + (ok ? 'ok' : 'error');
+      el.style.display = text ? 'block' : 'none';
+    }
+    function setLoading(btn, loading){
+      btn.disabled = loading;
+      btn.textContent = loading ? 'Please wait...' : (btn.dataset.label || btn.textContent);
+    }
+
+    function normalizePhone(v){
+      if (v == null) return null;
+      let s = String(v).trim().replace(/[\s\-()]/g, '');
+      if (/^\+254\d{9}$/.test(s)) s = s.slice(1);
+      if (/^254\d{9}$/.test(s)) return s;
+      if (/^0\d{9}$/.test(s)) return '254' + s.slice(1);
+      if (/^[17]\d{8}$/.test(s)) return '254' + s;
+      return null;
+    }
+
+    async function api(path, body){
+      const res = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {})
+      });
+      let data = null;
+      try { data = await res.json(); } catch { data = null; }
+      return { ok: res.ok, status: res.status, data: data || {} };
+    }
+
+    function switchTab(tab){
+      document.querySelectorAll('.auth-tab').forEach(t => {
+        if (!t.closest('.auth-modal-overlay')) t.classList.toggle('active', t.dataset.tab === tab);
+      });
+      document.querySelectorAll('.auth-panel:not(#panel-forgot)').forEach(p => {
+        if (!p.closest('.auth-modal-overlay')) p.classList.toggle('active', p.id === 'panel-' + tab);
+      });
+    }
+
+    document.querySelectorAll('.auth-tab').forEach(t => {
+      t.addEventListener('click', () => switchTab(t.dataset.tab));
+    });
+    $el('go-login-from-register').addEventListener('click', () => switchTab('login'));
+    $el('go-register-from-login').addEventListener('click', () => switchTab('register'));
+
+    // ---- Forgot password modal ----
+    const forgotModal = $el('forgotModal');
+    const FORGOT_STATE_KEY = 'aviator_forgot_state';
+
+    function saveForgotState(step, phone, whatsapp){
+      try { localStorage.setItem(FORGOT_STATE_KEY, JSON.stringify({ step, phone, whatsapp })); } catch (_) {}
+    }
+    function clearForgotState(){
+      try { localStorage.removeItem(FORGOT_STATE_KEY); } catch (_) {}
+    }
+    function loadForgotState(){
+      try { return JSON.parse(localStorage.getItem(FORGOT_STATE_KEY) || 'null'); } catch (_) { return null; }
+    }
+
+    function showForgotStep(step){
+      document.getElementById('forgot-step-1').style.display = 'none';
+      document.getElementById('forgot-step-2').style.display = 'none';
+      document.getElementById('forgot-step-3').style.display = 'none';
+      document.getElementById('forgot-step-' + step).style.display = '';
+      showMsg('msg-forgot', '', false);
+    }
+
+    function resetForgotModal(){
+      const pf = document.getElementById('panel-forgot');
+      if (pf) pf.classList.add('active');
+      showForgotStep(1);
+      saveForgotState(1, '', '');
+      $el('forgot-phone').value = '';
+      $el('forgot-whatsapp').value = '';
+      $el('forgot-code').value = '';
+      $el('forgot-new-password').value = '';
+    }
+    $el('go-forgot').addEventListener('click', () => {
+      const pf = document.getElementById('panel-forgot');
+      if (pf) pf.classList.add('active');
+      // Restore persisted state if any
+      const st = loadForgotState();
+      if (st && st.step) {
+        showForgotStep(st.step);
+        if (st.phone) $el('forgot-phone').value = st.phone;
+        if (st.whatsapp) $el('forgot-whatsapp').value = st.whatsapp;
+      } else {
+        resetForgotModal();
+      }
+      forgotModal.classList.remove('hidden');
+    });
+    $el('go-login-from-forgot').addEventListener('click', () => {
+      forgotModal.classList.add('hidden');
+      resetForgotModal();
+    });
+    // Close when clicking outside
+    forgotModal.addEventListener('click', (e) => {
+      if (e.target === forgotModal) { forgotModal.classList.add('hidden'); resetForgotModal(); }
+    });
+
+    // Also reset when switching main tabs (login/register) so modal doesn't stick in weird state
+    document.querySelectorAll('.auth-tab').forEach(t => {
+      t.addEventListener('click', () => {
+        if (forgotModal && !forgotModal.classList.contains('hidden')) {
+          forgotModal.classList.add('hidden');
+          resetForgotModal();
+        }
+      });
+    });
+
+    $el('go-back-step1').addEventListener('click', () => {
+      showForgotStep(1);
+      saveForgotState(1, $el('forgot-phone').value, '');
+      showMsg('msg-forgot', '', false);
+    });
+    $el('go-back-step2').addEventListener('click', () => {
+      showForgotStep(2);
+      saveForgotState(2, $el('forgot-phone').value, $el('forgot-whatsapp').value);
+      showMsg('msg-forgot', '', false);
+    });
+
+    $el('btn-forgot-send').dataset.label = 'Send Verification Code';
+    $el('btn-forgot-send').addEventListener('click', async () => {
+      const phone = normalizePhone($el('forgot-phone').value);
+      showMsg('msg-forgot', '', false);
+      if (!phone) { showMsg('msg-forgot', 'Enter a valid phone number', false); return; }
+      setLoading($el('btn-forgot-send'), true);
+      try {
+        const r = await api('/api/auth/forgot-password', { phone, whatsapp_number: phone });
+        if (r.ok && r.data.ok) {
+          showMsg('msg-forgot', r.data.msg || 'Reset request submitted. Proceed to WhatsApp step.', true);
+          saveForgotState(2, phone, '');
+          showForgotStep(2);
+          $el('forgot-whatsapp').value = '';
+        } else {
+          showMsg('msg-forgot', r.data.msg || 'Reset request failed', false);
+        }
+      } catch (e) {
+        showMsg('msg-forgot', 'Network error. Is the server running?', false);
+      } finally {
+        setLoading($el('btn-forgot-send'), false);
+      }
+    });
+
+    $el('btn-forgot-whatsapp').dataset.label = 'Submit WhatsApp Number';
+    $el('btn-forgot-whatsapp').addEventListener('click', async () => {
+      const whatsapp = normalizePhone($el('forgot-whatsapp').value);
+      const phone = normalizePhone($el('forgot-phone').value);
+      showMsg('msg-forgot', '', false);
+      if (!whatsapp) { showMsg('msg-forgot', 'Enter a valid WhatsApp number', false); return; }
+      setLoading($el('btn-forgot-whatsapp'), true);
+      try {
+        const r = await api('/api/auth/forgot-password', { phone, whatsapp_number: whatsapp });
+        if (r.ok && r.data.ok) {
+          showMsg('msg-forgot', r.data.msg || 'Request sent to admin. Wait for your verification code on WhatsApp.', true);
+          saveForgotState(3, phone, whatsapp);
+          showForgotStep(3);
+          $el('forgot-code').value = '';
+          $el('forgot-new-password').value = '';
+        } else {
+          showMsg('msg-forgot', r.data.msg || 'Request failed', false);
+        }
+      } catch (e) {
+        showMsg('msg-forgot', 'Network error. Is the server running?', false);
+      } finally {
+        setLoading($el('btn-forgot-whatsapp'), false);
+      }
+    });
+
+    $el('btn-forgot-reset').dataset.label = 'Reset Password';
+    $el('btn-forgot-reset').addEventListener('click', async () => {
+      const phone = normalizePhone($el('forgot-phone').value);
+      const code = ($el('forgot-code').value || '').trim();
+      const newPassword = $el('forgot-new-password').value || '';
+      showMsg('msg-forgot', '', false);
+      if (!phone) { showMsg('msg-forgot', 'Enter a valid phone number', false); return; }
+      if (!code || code.length !== 6) { showMsg('msg-forgot', 'Enter a valid 6-digit verification code', false); return; }
+      if (!newPassword || newPassword.length < 6) { showMsg('msg-forgot', 'Password must be at least 6 characters', false); return; }
+      setLoading($el('btn-forgot-reset'), true);
+      try {
+        const r = await api('/api/auth/verify-reset-code', { phone, code, newPassword });
+        if (r.ok && r.data.ok) {
+          showMsg('msg-forgot', r.data.msg || 'Password reset successful!', true);
+          forgotModal.classList.add('hidden');
+          showToast('Password reset successful — you can now log in.');
+        } else {
+          showMsg('msg-forgot', r.data.msg || 'Reset verification failed', false);
+        }
+      } catch (e) {
+        showMsg('msg-forgot', 'Network error. Is the server running?', false);
+      } finally {
+        setLoading($el('btn-forgot-reset'), false);
+      }
+    });
+
+    // ---- Login ----
+    $el('btn-login').dataset.label = 'Login';
+    $el('btn-login').addEventListener('click', async () => {
+      const phone = normalizePhone($el('login-phone').value);
+      const password = $el('login-password').value || '';
+      showMsg('msg-login', '', false);
+      if (!phone) { showMsg('msg-login', 'Enter a valid phone number', false); return; }
+      if (!password) { showMsg('msg-login', 'Enter your password', false); return; }
+      setLoading($el('btn-login'), true);
+      try {
+        const r = await api('/api/auth/login', { phone, password });
+        if (r.ok && r.data.ok) {
+          localStorage.setItem(TOKEN_KEY, r.data.token);
+          location.href = 'index.html';
+        } else {
+          showMsg('msg-login', r.data.msg || 'Login failed', false);
+        }
+      } catch (e) {
+        showMsg('msg-login', 'Network error. Is the server running?', false);
+      } finally {
+        setLoading($el('btn-login'), false);
+      }
+    });
+
+    // ---- Register ----
+    $el('btn-register').dataset.label = 'Create Account';
+    $el('btn-register').addEventListener('click', async () => {
+      const phone = normalizePhone($el('reg-phone').value);
+      const password = $el('reg-password').value || '';
+      const name = $el('reg-name').value || '';
+      showMsg('msg-register', '', false);
+      if (!phone) { showMsg('msg-register', 'Enter a valid phone number', false); return; }
+      if (!password || password.length < 6) { showMsg('msg-register', 'Password must be at least 6 characters', false); return; }
+      setLoading($el('btn-register'), true);
+      try {
+        const r = await api('/api/auth/register', { phone, password, name });
+        if (r.ok && r.data.ok) {
+          localStorage.setItem(TOKEN_KEY, r.data.token);
+          showMsg('msg-register', 'Account created — logging in…', true);
+          setTimeout(() => { location.href = 'index.html'; }, 600);
+        } else {
+          showMsg('msg-register', r.data.msg || 'Registration failed', false);
+        }
+      } catch (e) {
+        showMsg('msg-register', 'Network error. Is the server running?', false);
+      } finally {
+        setLoading($el('btn-register'), false);
+      }
+    });
+
+    // Already logged in?
+    if (localStorage.getItem(TOKEN_KEY)) {
+      location.href = 'index.html';
+    }
+  </script>
+</body>
+</html>
